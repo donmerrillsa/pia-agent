@@ -1,0 +1,20 @@
+# Environment variables — NEVER commit these
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Netlify build output
+.netlify/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Test outputs
+scripts/output/

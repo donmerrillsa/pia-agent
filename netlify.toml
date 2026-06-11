@@ -1,0 +1,17 @@
+[build]
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@supabase/supabase-js"]
+
+# Scheduled functions (Phase 2 — uncomment when ready)
+# [functions."generate-report"]
+#   schedule = "0 7 * * 1"  # Every Monday at 7:00 AM UTC
+
+[dev]
+  framework = "#custom"
+  targetPort = 3000
+  port = 8888
+  command = "echo 'No dev server — functions only'"
+  autoLaunch = false

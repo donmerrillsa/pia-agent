@@ -1,0 +1,22 @@
+{
+  "name": "pia-agent",
+  "version": "1.0.0",
+  "description": "Pipeline Integrity Agent — autonomous sales pipeline execution for HubSpot B2B SaaS",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "test:hubspot": "node scripts/test-hubspot-connection.js",
+    "test:supabase": "node scripts/test-supabase-connection.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@supabase/supabase-js": "^2.43.0",
+    "resend": "^3.2.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

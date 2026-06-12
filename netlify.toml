@@ -5,9 +5,10 @@
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
 
-# Scheduled functions (Phase 2 — uncomment when ready)
-# [functions."generate-report"]
-#   schedule = "0 7 * * 1"  # Every Monday at 7:00 AM UTC
+# ── Scheduled function — Monday Morning Pipeline Run ─────────
+# Runs every Monday at 12:00 PM UTC = 7:00 AM CDT
+[functions."scheduled-pipeline"]
+  schedule = "0 12 * * 1"
 
 [dev]
   framework = "#custom"

@@ -145,7 +145,11 @@ Sign it: "PIA — Pipeline Integrity Agent"`;
     }
 
     const openaiData = await openaiResponse.json();
-    const reportHtml = openaiData.choices?.[0]?.message?.content;
+    let reportHtml = openaiData.choices?.[0]?.message?.content;
+// Strip markdown code fences if OpenAI wraps the HTML
+if (reportHtml) {
+  reportHtml = reportHtml.replace(/^```html\s*/i, "").replace(/```\s*$/i, "").trim();
+}
 
     if (!reportHtml) {
       throw new Error("OpenAI returned empty response.");

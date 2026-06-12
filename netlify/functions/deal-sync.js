@@ -5,7 +5,7 @@
 // POST /.netlify/functions/deal-sync
 // Body: { "client_id": "<uuid>" }
 
-const { fetchAllDeals } = require("./_utils/hubspot");
+const { fetchAllDeals, fetchLastActivityForDeal } = require("./_utils/hubspot");
 const { getSupabaseClient } = require("./_utils/supabase");
 const { logAction, logError } = require("./_utils/logger");
 
@@ -55,7 +55,7 @@ exports.handler = async (event) => {
 
     // ── Step 2: Transform deals into deals_cache rows ─────────
     const now = new Date().toISOString();
-    const rows = deals.map((deal) => {
+    const rows = await Promise.all(deals.map(async (deal) => {
       const props = deal.properties || {};
 
       const lastModified = props.hs_lastmodifieddate
@@ -66,9 +66,21 @@ exports.handler = async (event) => {
         ? new Date(props.closedate)
         : null;
 
-      // Calculate days since last modification (proxy for stall detection)
-      const daysSinceActivity = lastModified
-        ? Math.floor((Date.now() - lastModified.getTime()) / (1000 * 60 * 60 * 24))
+      // Fetch latest engagement timestamp for accurate stall detection
+      let lastActivityMs = null;
+      try {
+        lastActivityMs = await fetchLastActivityForDeal(deal.id);
+      } catch (err) {
+        console.warn(`[deal-sync] Could not fetch activity for deal ${deal.id}: ${err.message}`);
+      }
+
+      // Use engagement timestamp if available, fall back to hs_lastmodifieddate
+      const activityDate = lastActivityMs
+        ? new Date(lastActivityMs)
+        : lastModified;
+
+      const daysSinceActivity = activityDate
+        ? Math.floor((Date.now() - activityDate.getTime()) / (1000 * 60 * 60 * 24))
         : null;
 
       return {
@@ -88,7 +100,7 @@ exports.handler = async (event) => {
         raw_properties: props,
         synced_at: now,
       };
-    });
+    }));
 
     // ── Step 3: Upsert into deals_cache ───────────────────────
     // UPSERT: update existing rows, insert new ones.

@@ -77,44 +77,29 @@ async function fetchAllDeals() {
 }
 
 /**
- * Fetch engagement (activity) data for a single deal.
- * Returns the most recent engagement timestamp, or null if none found.
+ * Fetch engagement (activity) data for a single deal using the v1 engagements API.
+ * Returns the most recent engagement timestamp (ms), or null if none found.
+ *
+ * Uses v1 API because notes posted via v1 are not visible via v3 associations endpoint.
  */
 async function fetchLastActivityForDeal(dealId) {
   const url =
-    `${HUBSPOT_BASE}/crm/v3/objects/deals/${dealId}/associations/engagements`;
+    `${HUBSPOT_BASE}/engagements/v1/engagements/associated/deal/${dealId}/paged?limit=10`;
 
   const response = await fetch(url, { headers: getHeaders() });
 
   if (response.status === 404) return null; // Deal has no engagements
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `HubSpot activity fetch failed for deal ${dealId} [${response.status}]: ${body}`
-    );
-  }
+  if (!response.ok) return null;
 
   const data = await response.json();
   if (!data.results?.length) return null;
 
-  // Pull timestamps for each engagement and return the most recent
-  const engagementIds = data.results.map((r) => r.id);
-  const timestamps = await Promise.all(
-    engagementIds.slice(0, 10).map((id) => fetchEngagementTimestamp(id)) // Cap at 10 to avoid rate limits
-  );
+  // Each result has engagement.timestamp — extract and return the most recent
+  const timestamps = data.results
+    .map((r) => r.engagement?.timestamp)
+    .filter(Boolean);
 
-  const valid = timestamps.filter(Boolean);
-  return valid.length ? Math.max(...valid) : null;
-}
-
-async function fetchEngagementTimestamp(engagementId) {
-  const url = `${HUBSPOT_BASE}/crm/v3/objects/engagements/${engagementId}?properties=hs_timestamp`;
-  const response = await fetch(url, { headers: getHeaders() });
-  if (!response.ok) return null;
-
-  const data = await response.json();
-  const ts = data.properties?.hs_timestamp;
-  return ts ? parseInt(ts, 10) : null;
+  return timestamps.length ? Math.max(...timestamps) : null;
 }
 
 /**

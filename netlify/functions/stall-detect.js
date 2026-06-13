@@ -9,11 +9,11 @@
 const { getSupabaseClient } = require("./_utils/supabase");
 const { logAction, logError } = require("./_utils/logger");
 
-// Stall thresholds by deal stage.
+// Global default stall thresholds by deal stage.
 // Supports both HubSpot default stage keys AND numeric portal-specific IDs.
 // Days of inactivity before a deal is flagged as stalled.
 // null = never stalls (closed stages).
-const STALL_THRESHOLDS = {
+const DEFAULT_STALL_THRESHOLDS = {
   // HubSpot default stage keys
   "appointmentscheduled":     7,
   "qualifiedtobuy":          10,
@@ -38,26 +38,39 @@ const STALL_THRESHOLDS = {
 // Stages that should never be evaluated for stalls
 const CLOSED_STAGES = new Set(["closedwon", "closedlost"]);
 
-function getStallThreshold(dealStage) {
-  if (!dealStage) return STALL_THRESHOLDS.default;
+/**
+ * D-05: Build effective thresholds for this client.
+ * If the client has custom stall_thresholds in the DB, merge them over the defaults.
+ * Client overrides win; anything not overridden falls back to the global default.
+ */
+function buildThresholds(clientOverrides) {
+  if (!clientOverrides || typeof clientOverrides !== "object") {
+    return DEFAULT_STALL_THRESHOLDS;
+  }
+  return { ...DEFAULT_STALL_THRESHOLDS, ...clientOverrides };
+}
+
+function getStallThreshold(dealStage, thresholds) {
+  if (!dealStage) return thresholds.default ?? 14;
 
   const stageLower = dealStage.toLowerCase().trim();
   if (CLOSED_STAGES.has(stageLower)) return null;
 
-  return STALL_THRESHOLDS[dealStage]
-    ?? STALL_THRESHOLDS[stageLower]
-    ?? STALL_THRESHOLDS.default;
+  return thresholds[dealStage]
+    ?? thresholds[stageLower]
+    ?? thresholds.default
+    ?? 14;
 }
 
 function isClosedStage(dealStage) {
   if (!dealStage) return false;
   const lower = dealStage.toLowerCase().trim();
-  return CLOSED_STAGES.has(lower) || STALL_THRESHOLDS[dealStage] === null;
+  return CLOSED_STAGES.has(lower) || DEFAULT_STALL_THRESHOLDS[dealStage] === null;
 }
 
 /**
- * D-04: Severity tiering.
- * CRITICAL: days stalled > 2x the stage threshold (severely overdue)
+ * Severity tiering (D-04).
+ * CRITICAL: days stalled > 2x the stage threshold
  * STALLED:  days stalled > threshold but <= 2x threshold
  */
 function getSeverity(daysStalled, threshold) {
@@ -112,7 +125,21 @@ exports.handler = async (event) => {
   const supabase = getSupabaseClient();
 
   try {
-    // Step 1: Fetch all deals for this client from deals_cache
+    // Step 1: Fetch client record to get custom thresholds (D-05)
+    const { data: clientRecord, error: clientError } = await supabase
+      .from("clients")
+      .select("stall_thresholds")
+      .eq("id", client_id)
+      .single();
+
+    if (clientError) {
+      console.warn(`[stall-detect] Could not fetch client record: ${clientError.message}. Using defaults.`);
+    }
+
+    const thresholds = buildThresholds(clientRecord?.stall_thresholds);
+    console.log(`[stall-detect] Using ${clientRecord?.stall_thresholds ? "custom" : "default"} stall thresholds`);
+
+    // Step 2: Fetch all deals for this client from deals_cache
     const { data: deals, error: fetchError } = await supabase
       .from("deals_cache")
       .select("*")
@@ -132,13 +159,13 @@ exports.handler = async (event) => {
       });
     }
 
-    // Step 2: Evaluate each deal for stalls
+    // Step 3: Evaluate each deal for stalls
     const stalledDeals = [];
 
     for (const deal of deals) {
       if (isClosedStage(deal.deal_stage)) continue;
 
-      const threshold = getStallThreshold(deal.deal_stage);
+      const threshold = getStallThreshold(deal.deal_stage, thresholds);
       if (threshold === null) continue;
 
       const daysStalled = deal.days_since_activity;
@@ -164,7 +191,7 @@ exports.handler = async (event) => {
       });
     }
 
-    // Step 3: Write stall_events (skip already-flagged deals)
+    // Step 4: Write stall_events (skip already-flagged deals)
     const stalledDealIds = stalledDeals.map((s) => s.deal.hubspot_deal_id);
 
     const { data: existingStalls } = await supabase
@@ -214,7 +241,7 @@ exports.handler = async (event) => {
       success: true,
     });
 
-    // Step 4: Return summary
+    // Step 5: Return summary
     return respond(200, {
       success: true,
       deals_evaluated: deals.length,

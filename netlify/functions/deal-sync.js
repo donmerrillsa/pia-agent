@@ -5,7 +5,7 @@
 // POST /.netlify/functions/deal-sync
 // Body: { "client_id": "<uuid>" }
 
-const { fetchAllDeals, fetchLastActivityForDeal } = require("./_utils/hubspot");
+const { fetchAllDeals, fetchLastActivityForDeal, fetchOwnerById } = require("./_utils/hubspot");
 const { getSupabaseClient } = require("./_utils/supabase");
 const { logAction, logError } = require("./_utils/logger");
 
@@ -33,7 +33,7 @@ exports.handler = async (event) => {
   const startTime = Date.now();
 
   try {
-    // ── Step 1: Fetch all deals from HubSpot ──────────────────
+    // ── Step 1: Fetch all deals from HubSpot ──────────────────────────
     console.log("[deal-sync] Fetching deals from HubSpot...");
     const deals = await fetchAllDeals();
     console.log(`[deal-sync] Fetched ${deals.length} deals from HubSpot`);
@@ -53,7 +53,18 @@ exports.handler = async (event) => {
       });
     }
 
-    // ── Step 2: Transform deals into deals_cache rows ─────────
+    // ── Step 2: Build owner cache to avoid redundant API calls ────────
+    // Collect unique owner IDs, then fetch them all once.
+    const ownerIds = [...new Set(
+      deals.map(d => d.properties?.hubspot_owner_id).filter(Boolean)
+    )];
+    const ownerCache = {};
+    for (const ownerId of ownerIds) {
+      ownerCache[ownerId] = await fetchOwnerById(ownerId);
+    }
+    console.log(`[deal-sync] Resolved ${Object.keys(ownerCache).length} owner(s)`);
+
+    // ── Step 3: Transform deals into deals_cache rows ─────────────────
     const now = new Date().toISOString();
     const rows = await Promise.all(deals.map(async (deal) => {
       const props = deal.properties || {};
@@ -83,6 +94,11 @@ exports.handler = async (event) => {
         ? Math.floor((Date.now() - activityDate.getTime()) / (1000 * 60 * 60 * 24))
         : null;
 
+      // Resolve owner name and email from cache
+      const owner = props.hubspot_owner_id
+        ? ownerCache[props.hubspot_owner_id] || null
+        : null;
+
       return {
         client_id,
         hubspot_deal_id: deal.id,
@@ -92,6 +108,8 @@ exports.handler = async (event) => {
         pipeline: props.pipeline || null,
         close_date: closeDate ? closeDate.toISOString().split("T")[0] : null,
         owner_id: props.hubspot_owner_id || null,
+        owner_name: owner?.fullName || null,
+        owner_email: owner?.email || null,
         stage_probability: props.hs_deal_stage_probability
           ? parseFloat(props.hs_deal_stage_probability)
           : null,
@@ -102,7 +120,7 @@ exports.handler = async (event) => {
       };
     }));
 
-    // ── Step 3: Upsert into deals_cache ───────────────────────
+    // ── Step 4: Upsert into deals_cache ───────────────────────────────
     // UPSERT: update existing rows, insert new ones.
     // The UNIQUE constraint on (client_id, hubspot_deal_id) handles deduplication.
     console.log(`[deal-sync] Upserting ${rows.length} deals into Supabase...`);
@@ -119,7 +137,7 @@ exports.handler = async (event) => {
       throw new Error(`Supabase upsert failed: ${upsertError.message}`);
     }
 
-    // ── Step 4: Remove deals no longer in HubSpot ─────────────
+    // ── Step 5: Remove deals no longer in HubSpot ─────────────────────
     // Any deal in deals_cache that wasn't in this sync is closed/deleted.
     const activeIds = deals.map((d) => d.id);
     const { error: deleteError } = await supabase
@@ -136,7 +154,7 @@ exports.handler = async (event) => {
     const duration = Date.now() - startTime;
     console.log(`[deal-sync] Sync complete. ${rows.length} deals in ${duration}ms`);
 
-    // ── Step 5: Log the action ────────────────────────────────
+    // ── Step 6: Log the action ────────────────────────────────────────
     await logAction({
       client_id,
       action_type: "deal_sync",

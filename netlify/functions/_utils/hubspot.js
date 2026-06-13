@@ -103,6 +103,31 @@ async function fetchLastActivityForDeal(dealId) {
 }
 
 /**
+ * Fetch a HubSpot owner by ID.
+ * Returns { id, email, firstName, lastName, fullName } or null if not found.
+ */
+async function fetchOwnerById(ownerId) {
+  if (!ownerId) return null;
+  try {
+    const response = await fetch(
+      `${HUBSPOT_BASE}/crm/v3/owners/${ownerId}`,
+      { headers: getHeaders() }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return {
+      id: data.id,
+      email: data.email || null,
+      firstName: data.firstName || null,
+      lastName: data.lastName || null,
+      fullName: `${data.firstName || ""} ${data.lastName || ""}`.trim() || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Verify the PAT is valid by hitting the owners endpoint (lightweight call).
  * Returns { valid: true, owner } or { valid: false, error }.
  */
@@ -129,6 +154,7 @@ async function verifyAccessToken() {
 module.exports = {
   fetchAllDeals,
   fetchLastActivityForDeal,
+  fetchOwnerById,
   verifyAccessToken,
   DEFAULT_DEAL_PROPERTIES,
 };

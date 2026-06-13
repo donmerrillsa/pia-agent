@@ -9,12 +9,12 @@
 const { getSupabaseClient } = require("./_utils/supabase");
 const { logAction, logError } = require("./_utils/logger");
 
-// ── Stall thresholds by deal stage ───────────────────────────
+// Stall thresholds by deal stage.
 // Supports both HubSpot default stage keys AND numeric portal-specific IDs.
 // Days of inactivity before a deal is flagged as stalled.
 // null = never stalls (closed stages).
 const STALL_THRESHOLDS = {
-  // ── HubSpot default stage keys ────────────────────────────
+  // HubSpot default stage keys
   "appointmentscheduled":     7,
   "qualifiedtobuy":          10,
   "presentationscheduled":   10,
@@ -23,7 +23,7 @@ const STALL_THRESHOLDS = {
   "closedwon":               null,
   "closedlost":              null,
 
-  // ── Portal-specific numeric stage IDs (pia-agent portal) ──
+  // Portal-specific numeric stage IDs (pia-agent portal)
   "3749122780":               7,   // Connected
   "3752325847":               7,   // Conversation Started
   "3752325848":              10,   // Demo Scheduled
@@ -31,7 +31,7 @@ const STALL_THRESHOLDS = {
   "3749122784":              14,   // Proposal Sent
   "3755051726":              14,   // Negotiating
 
-  // ── Default for any unrecognized stage ────────────────────
+  // Default for any unrecognized stage
   "default":                 14,
 };
 
@@ -41,11 +41,9 @@ const CLOSED_STAGES = new Set(["closedwon", "closedlost"]);
 function getStallThreshold(dealStage) {
   if (!dealStage) return STALL_THRESHOLDS.default;
 
-  // Check for closed stages first (both label and numeric ID forms)
   const stageLower = dealStage.toLowerCase().trim();
   if (CLOSED_STAGES.has(stageLower)) return null;
 
-  // Look up by exact stage value first, then normalized lowercase
   return STALL_THRESHOLDS[dealStage]
     ?? STALL_THRESHOLDS[stageLower]
     ?? STALL_THRESHOLDS.default;
@@ -55,6 +53,16 @@ function isClosedStage(dealStage) {
   if (!dealStage) return false;
   const lower = dealStage.toLowerCase().trim();
   return CLOSED_STAGES.has(lower) || STALL_THRESHOLDS[dealStage] === null;
+}
+
+/**
+ * D-04: Severity tiering.
+ * CRITICAL: days stalled > 2x the stage threshold (severely overdue)
+ * STALLED:  days stalled > threshold but <= 2x threshold
+ */
+function getSeverity(daysStalled, threshold) {
+  if (daysStalled > threshold * 2) return "CRITICAL";
+  return "STALLED";
 }
 
 function getStallReason(deal, threshold) {
@@ -104,49 +112,40 @@ exports.handler = async (event) => {
   const supabase = getSupabaseClient();
 
   try {
-    // ── Step 1: Load all deals from deals_cache ───────────────
+    // Step 1: Fetch all deals for this client from deals_cache
     const { data: deals, error: fetchError } = await supabase
       .from("deals_cache")
       .select("*")
       .eq("client_id", client_id);
 
-    if (fetchError) throw new Error(`Failed to load deals: ${fetchError.message}`);
+    if (fetchError) {
+      throw new Error(`Failed to fetch deals: ${fetchError.message}`);
+    }
 
     if (!deals || deals.length === 0) {
       return respond(200, {
         success: true,
+        deals_evaluated: 0,
         stalls_flagged: 0,
-        message: "No deals in cache. Run deal-sync first.",
+        message: "No deals found for this client.",
         duration_ms: Date.now() - startTime,
       });
     }
 
-    console.log(`[stall-detect] Evaluating ${deals.length} deals...`);
-
-    // ── Step 2: Score each deal ───────────────────────────────
+    // Step 2: Evaluate each deal for stalls
     const stalledDeals = [];
 
     for (const deal of deals) {
-      // Skip closed stages — they never stall
-      if (isClosedStage(deal.deal_stage)) {
-        console.log(`[stall-detect] Skipping closed deal: ${deal.deal_name}`);
-        continue;
-      }
+      if (isClosedStage(deal.deal_stage)) continue;
 
       const threshold = getStallThreshold(deal.deal_stage);
-
-      // Skip if threshold is null (extra safety check)
       if (threshold === null) continue;
 
       const daysStalled = deal.days_since_activity;
+      if (daysStalled === null || daysStalled <= threshold) continue;
 
-      // Flag if over threshold
-      if (daysStalled !== null && daysStalled >= threshold) {
-        stalledDeals.push({ deal, threshold, daysStalled });
-      }
+      stalledDeals.push({ deal, threshold, daysStalled });
     }
-
-    console.log(`[stall-detect] ${stalledDeals.length} stalled deals found`);
 
     if (stalledDeals.length === 0) {
       await logAction({
@@ -165,7 +164,7 @@ exports.handler = async (event) => {
       });
     }
 
-    // ── Step 3: Write stall_events ────────────────────────────
+    // Step 3: Write stall_events (skip already-flagged deals)
     const stalledDealIds = stalledDeals.map((s) => s.deal.hubspot_deal_id);
 
     const { data: existingStalls } = await supabase
@@ -191,6 +190,7 @@ exports.handler = async (event) => {
         deal_stage: deal.deal_stage,
         amount: deal.amount,
         days_stalled: daysStalled,
+        severity: getSeverity(daysStalled, threshold),
         stall_reason: getStallReason(deal, threshold),
         recommended_action: getRecommendedAction(deal),
         resolved: false,
@@ -214,7 +214,7 @@ exports.handler = async (event) => {
       success: true,
     });
 
-    // ── Step 4: Return summary ────────────────────────────────
+    // Step 4: Return summary
     return respond(200, {
       success: true,
       deals_evaluated: deals.length,
@@ -226,6 +226,7 @@ exports.handler = async (event) => {
         deal_stage: deal.deal_stage,
         amount: deal.amount,
         days_stalled: daysStalled,
+        severity: getSeverity(daysStalled, threshold),
         threshold,
         recommended_action: getRecommendedAction(deal),
       })),

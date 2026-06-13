@@ -10,6 +10,40 @@ const { fetchLastActivityForDeal } = require("./_utils/hubspot");
 const { getSupabaseClient } = require("./_utils/supabase");
 const { logAction, logError } = require("./_utils/logger");
 
+/**
+ * D-06: Calculate business days between two timestamps.
+ * Excludes Saturdays (day 6) and Sundays (day 0).
+ * Does not exclude holidays (v1.0 scope — holiday exclusion deferred to v1.1).
+ *
+ * @param {number} fromTs - Start timestamp in ms (last activity)
+ * @param {number} toTs   - End timestamp in ms (now)
+ * @returns {number} Number of business days elapsed
+ */
+function calcBusinessDays(fromTs, toTs) {
+  if (fromTs >= toTs) return 0;
+
+  let count = 0;
+  const start = new Date(fromTs);
+  const end = new Date(toTs);
+
+  // Normalize to midnight to count whole days only
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const current = new Date(start);
+  current.setDate(current.getDate() + 1); // Start counting from the day after last activity
+
+  while (current <= end) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) { // 0 = Sunday, 6 = Saturday
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return respond(405, { error: "Method not allowed. Use POST." });
@@ -34,7 +68,7 @@ exports.handler = async (event) => {
   const supabase = getSupabaseClient();
 
   try {
-    // ── Step 1: Load all deals for this client from deals_cache ──
+    // Step 1: Load all deals for this client from deals_cache
     const { data: deals, error: fetchError } = await supabase
       .from("deals_cache")
       .select("id, hubspot_deal_id, deal_name")
@@ -55,7 +89,7 @@ exports.handler = async (event) => {
 
     console.log(`[activity-sync] Processing ${deals.length} deals...`);
 
-    // ── Step 2: Fetch last activity for each deal ─────────────
+    // Step 2: Fetch last activity for each deal
     // Process in batches of 10 to avoid HubSpot rate limits
     const BATCH_SIZE = 10;
     let updated = 0;
@@ -76,8 +110,9 @@ exports.handler = async (event) => {
               ? new Date(lastActivityTs).toISOString()
               : null;
 
+            // D-06: Use business days only — exclude weekends
             const daysSinceActivity = lastActivityTs
-              ? Math.floor((now - lastActivityTs) / (1000 * 60 * 60 * 24))
+              ? calcBusinessDays(lastActivityTs, now)
               : null;
 
             // Update this deal's activity fields in deals_cache

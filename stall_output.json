@@ -1,0 +1,50 @@
+{
+  "success": true,
+  "deals_evaluated": 12,
+  "stalls_flagged": 5,
+  "new_stall_events": 2,
+  "existing_stalls": 3,
+  "stalled_deals": [
+    {
+      "deal_name": "[PIA-TEST] Pinnacle Health — Critical 20d",
+      "deal_stage": "3755051726",
+      "amount": 87500,
+      "days_stalled": 20,
+      "threshold": 14,
+      "recommended_action": "Re-engage decision maker. Send value reminder or case study. Request a 15-minute check-in."
+    },
+    {
+      "deal_name": "[PIA-TEST] Northstar Logistics — Stalled 11d",
+      "deal_stage": "3752325847",
+      "amount": 19500,
+      "days_stalled": 11,
+      "threshold": 7,
+      "recommended_action": "Re-engage contact with a value-add touchpoint. Ask an open question about their current priority."
+    },
+    {
+      "deal_name": "[PIA-TEST] Ironwood Tech — No Close Date",
+      "deal_stage": "3752325848",
+      "amount": 33000,
+      "days_stalled": 16,
+      "threshold": 10,
+      "recommended_action": "Follow up on presentation feedback. Ask what questions remain before moving forward."
+    },
+    {
+      "deal_name": "[PIA-TEST] Cascade Financial — Critical 31d",
+      "deal_stage": "3749122784",
+      "amount": 134000,
+      "days_stalled": 31,
+      "threshold": 14,
+      "recommended_action": "Follow up on contract status. Ask if legal review is complete or if there are blocking concerns."
+    },
+    {
+      "deal_name": "[PIA-TEST] Vertex Software — Zero Value",
+      "deal_stage": "3752325847",
+      "amount": 0,
+      "days_stalled": 9,
+      "threshold": 7,
+      "recommended_action": "Re-engage contact with a value-add touchpoint. Ask an open question about their current priority."
+    }
+  ],
+  "duration_ms": 1205
+}

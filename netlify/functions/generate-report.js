@@ -103,6 +103,8 @@ Report Date: ${reportDate}
 Total Pipeline Value: $${totalPipelineValue.toLocaleString()}
 Total Active Deals: ${deals.length}
 Stalled Deals: ${stalls.length}
+Stalled Pipeline Value: $${stalledValue.toLocaleString()} (${Math.round(stalledPct * 100)}% of total)
+Forecast Confidence: ${forecastConfidence} — based on ${Math.round(stalledPct * 100)}% of pipeline value stalled
 
 ACTIVE DEALS:
 ${dealsSummary}
@@ -124,7 +126,7 @@ Write the full HTML report. Include:
 <p style="margin:0 0 4px 0;font-size:12px;color:#333;"><strong>Phase 1 (now):</strong> PIA identifies stalled deals and tells you what action to take.</p>
 <p style="margin:0 0 4px 0;font-size:12px;color:#333;"><strong>Phase 2:</strong> PIA drafts the follow-up and notifies the rep directly — no manual forwarding required.</p>
 <p style="margin:0 0 4px 0;font-size:12px;color:#333;"><strong>Phase 3:</strong> PIA monitors whether the rep acted and escalates to you if they didn\'t.</p>
-<p style="margin:0;font-size:12px;color:#333;"><strong>Phase 4:</strong> With your approval, PIA executes the follow-up autonomously — closing the loop without manager intervention.</p>
+<p style="margin:0;font-size:12px;color:#333;"><strong>Phase 4:</strong> PIA executes follow-ups autonomously within rules you define — you set the guardrails once, PIA operates within them.</p>
 </div>
 
 Sign it: "PIA — Pipeline Integrity Agent"`;
@@ -179,8 +181,14 @@ if (reportHtml) {
       })),
     };
 
-    const forecastConfidence = stalls.length === 0 ? "High"
-      : stalls.length <= 2 ? "Medium" : "Low";
+    // Forecast confidence based on stalled value as % of total pipeline
+    // High: stalled value < 10% of pipeline
+    // Medium: stalled value 10-30% of pipeline
+    // Low: stalled value > 30% of pipeline
+    const stalledValue = stalls.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const stalledPct = totalPipelineValue > 0 ? (stalledValue / totalPipelineValue) : 0;
+    const forecastConfidence = stalledPct < 0.10 ? "High"
+      : stalledPct <= 0.30 ? "Medium" : "Low";
 
     if (!dry_run) {
       const { error: archiveError } = await supabase

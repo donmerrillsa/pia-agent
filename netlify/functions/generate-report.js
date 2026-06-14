@@ -97,24 +97,24 @@ exports.handler = async (event) => {
           `- ${s.deal_name || "Unnamed Deal"} | Stage: ${s.deal_stage || "Unknown"} | Amount: $${(s.amount || 0).toLocaleString()} | Days stalled: ${s.days_stalled} | Reason: ${s.stall_reason} | Recommended action: ${s.recommended_action}`
         ).join("\n");
 
-    const systemPrompt = `You are PIA â€” the Pipeline Integrity Agent. You are a no-nonsense B2B sales pipeline analyst. Your job is to write the Monday Morning Pipeline Report for a sales leader.
+    const systemPrompt = `You are PIA, the Pipeline Integrity Agent. You are a no-nonsense B2B sales pipeline analyst writing the Monday Morning Pipeline Report for a sales leader.
 
 Your report style:
-- Direct, executive-level language. No fluff.
-- Specific deal names, amounts, and days stalled â€” always cite the data.
-- Recommended actions are concrete and actionable, not generic.
-- Forecast confidence is based on pipeline health: High (no stalls, strong activity), Medium (some stalls, mixed activity), Low (multiple stalls, low activity).
-- Format as clean HTML using inline styles. Navy (#0D1B2A) headers, amber (#F5A623) highlights for stalled deals, white background.
-- Keep the report scannable â€” use tables and bullet points where appropriate.`;
-
+- Direct, executive-level language. No fluff, no filler.
+- Always cite specific deal names, dollar amounts, and days stalled.
+- Recommended actions are concrete and stage-specific, never generic.
+- Format as clean HTML using inline styles only. Navy (#0D1B2A) headers, amber (#F5A623) accent for stalled deal rows, white background, Arial font.
+- Keep the report scannable. Tables for deal data, short bullets for actions.
+- Do NOT include a signature line or closing statement. The report ends after the priority actions section.
+- Do NOT include a Pipeline Health Score. Forecast Confidence is provided separately.`;
     const userPrompt = `Generate the Monday Morning Pipeline Report for ${client.company_name}.
 
 Report Date: ${reportDate}
 Total Pipeline Value: $${totalPipelineValue.toLocaleString()}
 Total Active Deals: ${deals.length}
 Stalled Deals: ${stalls.length}
-Stalled Pipeline Value: $${stalledValue.toLocaleString()} (${Math.round(stalledPct * 100)}% of total)
-Forecast Confidence: ${forecastConfidence} — based on ${Math.round(stalledPct * 100)}% of pipeline value stalled
+Stalled Pipeline Value: $${stalledValue.toLocaleString()} (${Math.round(stalledPct * 100)}% of total pipeline)
+Forecast Confidence: ${forecastConfidence} — ${Math.round(stalledPct * 100)}% of pipeline value is currently stalled (target: below 10% for High confidence)
 
 ACTIVE DEALS:
 ${dealsSummary}
@@ -122,24 +122,14 @@ ${dealsSummary}
 STALLED DEALS (require immediate attention):
 ${stallsSummary}
 
-Write the full HTML report. Include:
-1. Executive Summary (3-4 sentences max)
-2. Pipeline Health Score (1-10 with brief rationale)
-3. Stalled Deals Table (deal name, stage, amount, days stalled, severity, recommended action). Severity: AT RISK (exceeded threshold), CRITICAL (exceeded 2x threshold).
-4. All Active Deals Summary Table
-5. This Week\'s Priority Actions (top 3, numbered)
-6. Forecast Confidence: High / Medium / Low with one-sentence rationale
-7. What\'s Coming — include this exact HTML block at the bottom of the report before the signature:
+Write the full HTML report with these sections in this exact order:
+1. Executive Summary (3-4 sentences — pipeline status, stall count, forecast confidence, one key risk)
+2. Forecast Confidence: ${forecastConfidence} — one sentence explaining why, referencing the stalled value percentage
+3. Stalled Deals Table with columns: Deal Name | Stage | Amount | Business Days Stalled | Severity | Recommended Action. Severity values: AT RISK or CRITICAL only.
+4. All Active Deals Summary Table with columns: Deal Name | Stage | Amount | Days Since Activity
+5. This Week\'s Priority Actions (top 3, numbered, specific to the stalled deals above)
 
-<div style="background:#f8f9fa;border-left:4px solid #F5A623;padding:16px 20px;margin-top:32px;font-family:Arial,sans-serif;">
-<p style="margin:0 0 8px 0;font-size:13px;font-weight:bold;color:#0D1B2A;">What\'s Coming in PIA</p>
-<p style="margin:0 0 4px 0;font-size:12px;color:#333;"><strong>Phase 1 (now):</strong> PIA identifies stalled deals and tells you what action to take.</p>
-<p style="margin:0 0 4px 0;font-size:12px;color:#333;"><strong>Phase 2:</strong> PIA drafts the follow-up and notifies the rep directly — no manual forwarding required.</p>
-<p style="margin:0 0 4px 0;font-size:12px;color:#333;"><strong>Phase 3:</strong> PIA monitors whether the rep acted and escalates to you if they didn\'t.</p>
-<p style="margin:0;font-size:12px;color:#333;"><strong>Phase 4:</strong> PIA executes follow-ups autonomously within rules you define — you set the guardrails once, PIA operates within them.</p>
-</div>
-
-Sign it: "PIA — Pipeline Integrity Agent"`;
+Do not include a Pipeline Health Score. Do not include a signature. End the report after Priority Actions.`;
     // â”€â”€ Step 5: Call OpenAI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     console.log("[generate-report] Calling OpenAI...");
     const openaiResponse = await fetch(OPENAI_API_URL, {
@@ -174,6 +164,34 @@ if (reportHtml) {
     if (!reportHtml) {
       throw new Error("OpenAI returned empty response.");
     }
+
+    // Inject hardcoded sections — guaranteed to appear regardless of AI output
+    const confidenceColor = forecastConfidence === "High" ? "#2e7d32" : forecastConfidence === "Medium" ? "#e65100" : "#c62828";
+    const confidenceNote = `
+<div style="background:#fff8e1;border-left:4px solid #F5A623;padding:12px 16px;margin:24px 0;font-family:Arial,sans-serif;">
+  <p style="margin:0;font-size:13px;color:#0D1B2A;">
+    <strong>Forecast Confidence: <span style="color:${confidenceColor}">${forecastConfidence}</span></strong> — 
+    ${Math.round(stalledPct * 100)}% of pipeline value ($${stalledValue.toLocaleString()}) is currently stalled. 
+    Target: keep stalled value below 10% of pipeline for High confidence.
+  </p>
+</div>`;
+
+    const roadmapHtml = `
+<div style="background:#f8f9fa;border-left:4px solid #F5A623;padding:16px 20px;margin-top:32px;font-family:Arial,sans-serif;">
+  <p style="margin:0 0 10px 0;font-size:13px;font-weight:bold;color:#0D1B2A;">What's Coming in PIA</p>
+  <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 1 (now):</strong> PIA identifies stalled deals and tells you what action to take.</p>
+  <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 2:</strong> PIA drafts the follow-up and notifies the rep directly — no manual forwarding required.</p>
+  <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 3:</strong> PIA monitors whether the rep acted and escalates to you if they didn't.</p>
+  <p style="margin:0;font-size:12px;color:#333;"><strong>Phase 4:</strong> PIA executes follow-ups autonomously within rules you define — you set the guardrails once, PIA operates within them.</p>
+</div>`;
+
+    // Insert confidence note after opening body tag, append roadmap at end
+    if (reportHtml.includes('<body')) {
+      reportHtml = reportHtml.replace(/(<body[^>]*>)/i, '$1' + confidenceNote);
+    } else {
+      reportHtml = confidenceNote + reportHtml;
+    }
+    reportHtml = reportHtml + roadmapHtml;
 
     console.log("[generate-report] Report generated successfully.");
 

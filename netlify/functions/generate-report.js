@@ -70,6 +70,16 @@ exports.handler = async (event) => {
     if (stallsError) throw new Error(`Failed to load stalls: ${stallsError.message}`);
 
     const totalPipelineValue = deals.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+    // Forecast confidence based on stalled value as % of total pipeline
+    // High: stalled value < 10% of pipeline
+    // Medium: stalled value 10-30% of pipeline
+    // Low: stalled value > 30% of pipeline
+    const stalledValue = stalls.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const stalledPct = totalPipelineValue > 0 ? (stalledValue / totalPipelineValue) : 0;
+    const forecastConfidence = stalledPct < 0.10 ? "High"
+      : stalledPct <= 0.30 ? "Medium" : "Low";
+
     const reportDate = new Date().toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
@@ -181,14 +191,7 @@ if (reportHtml) {
       })),
     };
 
-    // Forecast confidence based on stalled value as % of total pipeline
-    // High: stalled value < 10% of pipeline
-    // Medium: stalled value 10-30% of pipeline
-    // Low: stalled value > 30% of pipeline
-    const stalledValue = stalls.reduce((sum, s) => sum + (s.amount || 0), 0);
-    const stalledPct = totalPipelineValue > 0 ? (stalledValue / totalPipelineValue) : 0;
-    const forecastConfidence = stalledPct < 0.10 ? "High"
-      : stalledPct <= 0.30 ? "Medium" : "Low";
+
 
     if (!dry_run) {
       const { error: archiveError } = await supabase

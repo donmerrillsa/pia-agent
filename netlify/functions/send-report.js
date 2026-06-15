@@ -132,6 +132,8 @@ exports.handler = async (event) => {
     await logAction({
       client_id,
       action_type: "report_sent",
+      recipient: recipients.join(", "),
+      status: "sent",
       notes: `Report emailed to ${recipients.join(", ")} in ${duration}ms. Resend ID: ${resendData.id}`,
       success: true,
     });

@@ -47,7 +47,9 @@ exports.handler = async (event) => {
 
   console.log(`[run-pipeline] Starting full pipeline run for client ${client_id}`);
   const startTime = Date.now();
+  const run_id = crypto.randomUUID();
   const results = {};
+  console.log(`[run-pipeline] run_id: ${run_id}`);
 
   try {
     // ── Step 1: Deal Sync ─────────────────────────────────────
@@ -138,6 +140,7 @@ exports.handler = async (event) => {
 
     await logAction({
       client_id,
+      run_id,
       action_type: "pipeline_run",
       notes: `Full pipeline run complete in ${duration}ms. Deals: ${results.deal_sync.deals_synced}, Stalls: ${results.stall_detect.stalls_flagged}, Confidence: ${results.generate_report.forecast_confidence}`,
       success: true,
@@ -162,7 +165,7 @@ exports.handler = async (event) => {
     console.error("[run-pipeline] Fatal error:", err.message);
 
     await logError(
-      { client_id, action_type: "pipeline_run", notes: "Pipeline run failed" },
+      { client_id, run_id, action_type: "pipeline_run", notes: "Pipeline run failed" },
       err
     ).catch(() => {});
 

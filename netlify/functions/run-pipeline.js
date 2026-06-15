@@ -12,6 +12,7 @@
 const { getSupabaseClient } = require("./_utils/supabase");
 const { fetchAllDeals, fetchLastActivityForDeal } = require("./_utils/hubspot");
 const { logAction, logError } = require("./_utils/logger");
+const { sendAdminAlert } = require("./send-report");
 
 const BASE_URL = "https://pia-agent.netlify.app/.netlify/functions";
 
@@ -164,6 +165,17 @@ exports.handler = async (event) => {
       { client_id, action_type: "pipeline_run", notes: "Pipeline run failed" },
       err
     ).catch(() => {});
+
+    // Determine which step failed based on results
+    const failed_step = !results.deal_sync?.success ? "deal-sync (Step 1)"
+      : !results.generate_report?.success ? "generate-report (Step 4)"
+      : "unknown step";
+
+    await sendAdminAlert({
+      client_id,
+      failed_step,
+      error_message: err.message,
+    }).catch(() => {});
 
     return respond(500, {
       success: false,

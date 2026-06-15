@@ -222,7 +222,7 @@ exports.handler = async (event) => {
 
       : activeDeals.map(d =>
 
-          `- ${d.deal_name || "Unnamed Deal"} | Stage: ${stageName(d.deal_stage)} | Amount: $${(d.amount || 0).toLocaleString()} | Days since activity: ${d.days_since_activity ?? "Unknown"}`
+          `- ${d.deal_name || "Unnamed Deal"} | Stage: ${stageName(d.deal_stage)} | Amount: $${(d.amount || 0).toLocaleString()} | Days since activity: ${d.days_since_activity ?? "Unknown"} | Owner ID: ${d.owner_id || "Unassigned"}`
 
         ).join("\n");
 
@@ -234,11 +234,29 @@ exports.handler = async (event) => {
 
       : stalls.map(s =>
 
-          `- ${s.deal_name || "Unnamed Deal"} | Stage: ${stageName(s.deal_stage)} | Amount: $${(s.amount || 0).toLocaleString()} | Days stalled: ${s.days_stalled} | Severity: ${s.severity || "AT RISK"} | Recommended action: ${s.recommended_action}`
+          `- ${s.deal_name || "Unnamed Deal"} | Stage: ${stageName(s.deal_stage)} | Amount: $${(s.amount || 0).toLocaleString()} | Days stalled: ${s.days_stalled} | Severity: ${s.severity || "AT RISK"} | Owner ID: ${s.owner_id || "Unassigned"} | Recommended action: ${s.recommended_action}`
 
         ).join("\n");
 
 
+
+    // Build rep breakdown summary
+    const ownerMap = {};
+    activeDeals.forEach(d => {
+      const ownerId = d.owner_id || "Unassigned";
+      if (!ownerMap[ownerId]) ownerMap[ownerId] = { deals: [], stalledDeals: [], totalValue: 0, stalledValue: 0 };
+      ownerMap[ownerId].deals.push(d.deal_name || "Unnamed");
+      ownerMap[ownerId].totalValue += d.amount || 0;
+    });
+    stalls.forEach(s => {
+      const ownerId = s.owner_id || "Unassigned";
+      if (!ownerMap[ownerId]) ownerMap[ownerId] = { deals: [], stalledDeals: [], totalValue: 0, stalledValue: 0 };
+      ownerMap[ownerId].stalledDeals.push(s.deal_name || "Unnamed");
+      ownerMap[ownerId].stalledValue += s.amount || 0;
+    });
+    const repBreakdownSummary = Object.entries(ownerMap).map(([ownerId, data]) =>
+      `- Rep Owner ID: ${ownerId} | Active Deals: ${data.deals.length} (${data.deals.join(", ")}) | Total Value: $${data.totalValue.toLocaleString()} | Stalled Deals: ${data.stalledDeals.length} (${data.stalledDeals.join(", ") || "none"}) | Stalled Value: $${data.stalledValue.toLocaleString()}`
+    ).join("\n");
 
     const systemPrompt = `You are PIA, the Pipeline Integrity Agent. You are a no-nonsense B2B sales pipeline analyst writing the Pipeline Integrity Report for a sales leader.
 
@@ -278,13 +296,19 @@ Stalled Deals: ${stalls.length}
 
 Stalled Pipeline Value: $${stalledValue.toLocaleString()} (${Math.round(stalledPct * 100)}% of total pipeline)
 
-Forecast Confidence: ${forecastConfidence} Ã¢â‚¬â€ ${Math.round(stalledPct * 100)}% of pipeline value is currently stalled (target: below 10% for High confidence)
+Forecast Confidence: ${forecastConfidence} — ${Math.round(stalledPct * 100)}% of pipeline value is currently stalled (target: below 10% for High confidence)
 
 
 
 ACTIVE DEALS:
 
 ${dealsSummary}
+
+
+
+REP BREAKDOWN:
+
+${repBreakdownSummary}
 
 
 
@@ -296,15 +320,17 @@ ${stallsSummary}
 
 Write the full HTML report with these sections in this exact order:
 
-1. Executive Summary (3-4 sentences Ã¢â‚¬â€ pipeline status, stall count, forecast confidence, one key risk)
+1. Executive Summary (3-4 sentences — pipeline status, stall count, forecast confidence, one key risk)
 
-2. Forecast Confidence: ${forecastConfidence} Ã¢â‚¬â€ one sentence explaining why, referencing the stalled value percentage
+2. Forecast Confidence: ${forecastConfidence} — one sentence explaining why, referencing the stalled value percentage
 
-3. Stalled Deals Table with columns: Deal Name | Stage | Amount | Business Days Stalled | Severity | Recommended Action. Severity values: AT RISK or CRITICAL only. Use the Severity value exactly as provided Ã¢â‚¬â€ do not recalculate.
+3. Stalled Deals Table with columns: Deal Name | Stage | Amount | Business Days Stalled | Severity | Recommended Action. Severity values: AT RISK or CRITICAL only. Use the Severity value exactly as provided — do not recalculate.
 
 4. This Week\'s Priority Actions (top 3, numbered, specific to the stalled deals above)
 
-5. All Active Deals Summary Table with columns: Deal Name | Stage | Amount | Days Since Activity
+5. Rep Breakdown Table with columns: Rep (Owner ID) | Active Deals | Total Pipeline Value | Stalled Deals | Stalled Value
+
+6. All Active Deals Summary Table with columns: Deal Name | Stage | Amount | Days Since Activity
 
 
 
@@ -380,7 +406,7 @@ if (reportHtml) {
 
 
 
-    // Inject hardcoded sections Ã¢â‚¬â€ guaranteed to appear regardless of AI output
+    // Inject hardcoded sections — guaranteed to appear regardless of AI output
 
     const roadmapHtml = `
 
@@ -390,11 +416,11 @@ if (reportHtml) {
 
   <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 1 (now):</strong> PIA identifies stalled deals and tells you what action to take.</p>
 
-  <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 2:</strong> PIA drafts the follow-up and notifies the rep directly Ã¢â‚¬â€ no manual forwarding required.</p>
+  <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 2:</strong> PIA drafts the follow-up and notifies the rep directly — no manual forwarding required.</p>
 
   <p style="margin:0 0 6px 0;font-size:12px;color:#333;"><strong>Phase 3:</strong> PIA monitors whether the rep acted and escalates to you if they didn't.</p>
 
-  <p style="margin:0;font-size:12px;color:#333;"><strong>Phase 4:</strong> PIA executes follow-ups autonomously within rules you define Ã¢â‚¬â€ you set the guardrails once, PIA operates within them.</p>
+  <p style="margin:0;font-size:12px;color:#333;"><strong>Phase 4:</strong> PIA executes follow-ups autonomously within rules you define — you set the guardrails once, PIA operates within them.</p>
 
 </div>`;
 

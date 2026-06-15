@@ -13,7 +13,7 @@ const { logAction, logError } = require("./_utils/logger");
 /**
  * D-06: Calculate business days between two timestamps.
  * Excludes Saturdays (day 6) and Sundays (day 0).
- * Does not exclude holidays (v1.0 scope — holiday exclusion deferred to v1.1).
+ * Does not exclude holidays (v1.0 scope â€” holiday exclusion deferred to v1.1).
  *
  * @param {number} fromTs - Start timestamp in ms (last activity)
  * @param {number} toTs   - End timestamp in ms (now)
@@ -110,7 +110,7 @@ exports.handler = async (event) => {
               ? new Date(lastActivityTs).toISOString()
               : null;
 
-            // D-06: Use business days only — exclude weekends
+            // D-06: Use business days only â€” exclude weekends
             const daysSinceActivity = lastActivityTs
               ? calcBusinessDays(lastActivityTs, now)
               : null;
@@ -143,10 +143,7 @@ exports.handler = async (event) => {
         })
       );
 
-      // Small delay between batches to respect HubSpot rate limits
-      if (i + BATCH_SIZE < deals.length) {
-        await sleep(500);
-      }
+      // No sleep needed at current deal volumes (<50 deals)
     }
 
     const duration = Date.now() - startTime;

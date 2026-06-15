@@ -9,6 +9,7 @@
 // POST /.netlify/functions/run-pipeline
 // Body: { "client_id": "<uuid>", "send_email": true/false }
 
+const { randomUUID } = require("crypto");
 const { getSupabaseClient } = require("./_utils/supabase");
 const { fetchAllDeals, fetchLastActivityForDeal } = require("./_utils/hubspot");
 const { logAction, logError } = require("./_utils/logger");
@@ -47,7 +48,7 @@ exports.handler = async (event) => {
 
   console.log(`[run-pipeline] Starting full pipeline run for client ${client_id}`);
   const startTime = Date.now();
-  const run_id = crypto.randomUUID();
+  const run_id = randomUUID();
   const results = {};
   console.log(`[run-pipeline] run_id: ${run_id}`);
 

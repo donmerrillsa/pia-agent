@@ -354,7 +354,7 @@ Do not include a Pipeline Health Score. Do not include a signature. End the repo
 
       body: JSON.stringify({
 
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
 
         max_tokens: 3000,
 

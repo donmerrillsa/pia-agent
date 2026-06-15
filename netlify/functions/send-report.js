@@ -1,5 +1,5 @@
 // netlify/functions/send-report.js
-// Sends the Monday Morning Pipeline Report via Resend email.
+// Sends the Pipeline Integrity Report via Resend email.
 // Pulls the most recent report from report_archive and emails it
 // to all recipients configured on the client record.
 //
@@ -101,7 +101,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         from: `PIA — Pipeline Integrity Agent <${fromEmail}>`,
         to: recipients,
-        subject: `Monday Morning Pipeline Report — ${reportDate}`,
+        subject: `Pipeline Integrity Report — ${reportDate}`,
         html: reportHtml,
       }),
     });

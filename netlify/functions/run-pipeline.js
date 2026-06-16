@@ -55,7 +55,7 @@ exports.handler = async (event) => {
   try {
     // ── Step 1: Deal Sync ─────────────────────────────────────
     console.log("[run-pipeline] Step 1: deal-sync...");
-    const dealSync = await callFunction("deal-sync", { client_id });
+    const dealSync = await callFunction("deal-sync", { client_id, run_id });
     results.deal_sync = {
       success: dealSync.data.success,
       deals_synced: dealSync.data.deals_synced ?? 0,
@@ -69,7 +69,7 @@ exports.handler = async (event) => {
 
     // ── Step 2: Activity Sync ─────────────────────────────────
     console.log("[run-pipeline] Step 2: activity-sync...");
-    const activitySync = await callFunction("activity-sync", { client_id });
+    const activitySync = await callFunction("activity-sync", { client_id, run_id });
     results.activity_sync = {
       success: activitySync.data.success,
       deals_updated: activitySync.data.deals_updated ?? 0,
@@ -83,7 +83,7 @@ exports.handler = async (event) => {
 
     // ── Step 3: Stall Detection ───────────────────────────────
     console.log("[run-pipeline] Step 3: stall-detect...");
-    const stallDetect = await callFunction("stall-detect", { client_id });
+    const stallDetect = await callFunction("stall-detect", { client_id, run_id });
     results.stall_detect = {
       success: stallDetect.data.success,
       stalls_flagged: stallDetect.data.stalls_flagged ?? 0,
@@ -100,6 +100,7 @@ exports.handler = async (event) => {
     console.log("[run-pipeline] Step 4: generate-report...");
     const generateReport = await callFunction("generate-report", {
       client_id,
+      run_id,
       dry_run: false,
     });
     results.generate_report = {
@@ -118,7 +119,7 @@ exports.handler = async (event) => {
     // ── Step 5: Send Report (optional) ───────────────────────
     if (send_email) {
       console.log("[run-pipeline] Step 5: send-report...");
-      const sendReport = await callFunction("send-report", { client_id });
+      const sendReport = await callFunction("send-report", { client_id, run_id });
       results.send_report = {
         success: sendReport.data.success,
         recipients: sendReport.data.recipients ?? [],

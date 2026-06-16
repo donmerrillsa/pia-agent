@@ -15,10 +15,11 @@ exports.handler = async (event) => {
   }
 
   // Parse client_id from request body
-  let client_id;
+  let client_id, run_id;
   try {
     const body = JSON.parse(event.body || "{}");
     client_id = body.client_id;
+    run_id = body.run_id ?? null;
   } catch {
     return respond(400, { error: "Invalid JSON body." });
   }
@@ -41,6 +42,7 @@ exports.handler = async (event) => {
     if (deals.length === 0) {
       await logAction({
         client_id,
+        run_id,
         action_type: "deal_sync",
         notes: "Sync completed â€” no active deals found in HubSpot",
         success: true,
@@ -144,6 +146,7 @@ exports.handler = async (event) => {
     // â”€â”€ Step 6: Log the action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     await logAction({
       client_id,
+      run_id,
       action_type: "deal_sync",
       notes: `Synced ${rows.length} deals in ${duration}ms`,
       success: true,
@@ -162,6 +165,7 @@ exports.handler = async (event) => {
     await logError(
       {
         client_id,
+        run_id,
         action_type: "deal_sync",
         notes: "Deal sync failed",
       },

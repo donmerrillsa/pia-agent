@@ -34,10 +34,11 @@ exports.handler = async (event) => {
     return respond(405, { error: "Method not allowed. Use POST." });
   }
 
-  let client_id, dry_run;
+  let client_id, run_id, dry_run;
   try {
     const body = JSON.parse(event.body || "{}");
     client_id = body.client_id;
+    run_id = body.run_id ?? null;
     dry_run = body.dry_run ?? false;
   } catch {
     return respond(400, { error: "Invalid JSON body." });
@@ -234,6 +235,7 @@ exports.handler = async (event) => {
 
     await logAction({
       client_id,
+      run_id,
       action_type: "report_generated",
       notes: `Report generated in ${duration}ms. Deals: ${deals.length}, Stalls: ${stalls.length}, Forecast: ${forecastConfidence}. dry_run: ${dry_run}`,
       success: true,
@@ -253,7 +255,7 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error("[generate-report] Error:", err.message);
     await logError(
-      { client_id, action_type: "report_generated", notes: "Report generation failed" },
+      { client_id, run_id, action_type: "report_generated", notes: "Report generation failed" },
       err
     ).catch(() => {});
 

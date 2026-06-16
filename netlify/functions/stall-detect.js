@@ -108,10 +108,11 @@ exports.handler = async (event) => {
     return respond(405, { error: "Method not allowed. Use POST." });
   }
 
-  let client_id;
+  let client_id, run_id;
   try {
     const body = JSON.parse(event.body || "{}");
     client_id = body.client_id;
+    run_id = body.run_id ?? null;
   } catch {
     return respond(400, { error: "Invalid JSON body." });
   }
@@ -177,6 +178,7 @@ exports.handler = async (event) => {
     if (stalledDeals.length === 0) {
       await logAction({
         client_id,
+        run_id,
         action_type: "stall_detect",
         notes: `Evaluated ${deals.length} deals — no stalls detected`,
         success: true,
@@ -236,6 +238,7 @@ exports.handler = async (event) => {
 
     await logAction({
       client_id,
+      run_id,
       action_type: "stall_detect",
       notes: `Evaluated ${deals.length} deals — ${stalledDeals.length} stalled, ${newStalls.length} newly flagged`,
       success: true,
@@ -263,7 +266,7 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error("[stall-detect] Error:", err.message);
     await logError(
-      { client_id, action_type: "stall_detect", notes: "Stall detection failed" },
+      { client_id, run_id, action_type: "stall_detect", notes: "Stall detection failed" },
       err
     ).catch(() => {});
 

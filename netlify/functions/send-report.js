@@ -16,10 +16,11 @@ exports.handler = async (event) => {
     return respond(405, { error: "Method not allowed. Use POST." });
   }
 
-  let client_id, report_html_override;
+  let client_id, run_id, report_html_override;
   try {
     const body = JSON.parse(event.body || "{}");
     client_id = body.client_id;
+    run_id = body.run_id ?? null;
     report_html_override = body.report_html ?? null;
   } catch {
     return respond(400, { error: "Invalid JSON body." });
@@ -131,6 +132,7 @@ exports.handler = async (event) => {
 
     await logAction({
       client_id,
+      run_id,
       action_type: "report_sent",
       recipient: recipients.join(", "),
       status: "sent",
@@ -149,7 +151,7 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error("[send-report] Error:", err.message);
     await logError(
-      { client_id, action_type: "report_sent", notes: "Report send failed" },
+      { client_id, run_id, action_type: "report_sent", notes: "Report send failed" },
       err
     ).catch(() => {});
 

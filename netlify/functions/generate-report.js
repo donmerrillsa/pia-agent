@@ -90,21 +90,6 @@ exports.handler = async (event) => {
     const forecastConfidence = stalledPct < 0.10 ? "High" : stalledPct <= 0.30 ? "Medium" : "Low";
     const stalledPctDisplay = Math.round(stalledPct * 100);
 
-    // Rep breakdown
-    const ownerMap = {};
-    activeDeals.forEach(d => {
-      const ownerId = d.owner_id || "Unassigned";
-      if (!ownerMap[ownerId]) ownerMap[ownerId] = { deals: [], stalledDeals: [], totalValue: 0, stalledValue: 0 };
-      ownerMap[ownerId].deals.push(d.deal_name || "Unnamed");
-      ownerMap[ownerId].totalValue += d.amount || 0;
-    });
-    stalls.forEach(s => {
-      const ownerId = s.owner_id || "Unassigned";
-      if (!ownerMap[ownerId]) ownerMap[ownerId] = { deals: [], stalledDeals: [], totalValue: 0, stalledValue: 0 };
-      ownerMap[ownerId].stalledDeals.push(s.deal_name || "Unnamed");
-      ownerMap[ownerId].stalledValue += s.amount || 0;
-    });
-
     const reportDate = new Date().toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
@@ -112,50 +97,42 @@ exports.handler = async (event) => {
     // ── Step 5: Build HTML report ───────────────────────────────────────────
     const confidenceColor = forecastConfidence === "High" ? "#2e7d32" : forecastConfidence === "Medium" ? "#e65100" : "#b71c1c";
 
-    const stalledRowsHtml = stalls.length === 0
-      ? `<tr><td colspan="6" style="padding:12px;text-align:center;color:#666;">No stalled deals detected.</td></tr>`
-      : stalls.map(s => `
-        <tr style="background:#F5A623;">
-          <td style="padding:10px 12px;font-weight:bold;">${s.deal_name || "Unnamed Deal"}</td>
-          <td style="padding:10px 12px;">${stageName(s.deal_stage)}</td>
-          <td style="padding:10px 12px;">$${(s.amount || 0).toLocaleString()}</td>
-          <td style="padding:10px 12px;text-align:center;">${s.days_stalled}</td>
-          <td style="padding:10px 12px;font-weight:bold;">${s.severity || "AT RISK"}</td>
-          <td style="padding:10px 12px;">${s.recommended_action || "Review and re-engage."}</td>
-        </tr>`).join("");
-
-    const priorityActionsHtml = stalls.length === 0
-      ? `<li style="margin-bottom:8px;">No stalled deals require immediate action.</li>`
-      : stalls.slice(0, 3).map((s, i) => `
-        <li style="margin-bottom:10px;">
-          <strong>${s.deal_name || "Unnamed Deal"}</strong> — ${s.recommended_action || "Review and re-engage."}
-        </li>`).join("");
-
-    const repRowsHtml = Object.entries(ownerMap).map(([ownerId, data]) => `
-      <tr>
-        <td style="padding:10px 12px;">${ownerId}</td>
-        <td style="padding:10px 12px;">${data.deals.length}</td>
-        <td style="padding:10px 12px;">$${data.totalValue.toLocaleString()}</td>
-        <td style="padding:10px 12px;">${data.stalledDeals.length}</td>
-        <td style="padding:10px 12px;">$${data.stalledValue.toLocaleString()}</td>
-      </tr>`).join("");
-
-    const allDealsRowsHtml = activeDeals.length === 0
-      ? `<tr><td colspan="4" style="padding:12px;text-align:center;color:#666;">No active deals in pipeline.</td></tr>`
-      : activeDeals.map(d => `
-        <tr>
-          <td style="padding:10px 12px;">${d.deal_name || "Unnamed Deal"}</td>
-          <td style="padding:10px 12px;">${stageName(d.deal_stage)}</td>
-          <td style="padding:10px 12px;">$${(d.amount || 0).toLocaleString()}</td>
-          <td style="padding:10px 12px;text-align:center;">${d.days_since_activity ?? "Unknown"}</td>
-        </tr>`).join("");
+    const confidenceExplanation = forecastConfidence === "High"
+      ? `Forecast confidence is <strong style="color:${confidenceColor};">High</strong>. Less than 10% of pipeline value is stalled — pipeline is healthy.`
+      : forecastConfidence === "Medium"
+      ? `Forecast confidence is <strong style="color:${confidenceColor};">Medium</strong>. ${stalledPctDisplay}% of pipeline value ($${stalledValue.toLocaleString()} of $${totalPipelineValue.toLocaleString()}) is stalled, which is above the 10% threshold for High confidence. Stalled value must fall below 10% to reach High confidence.`
+      : `Forecast confidence is <strong style="color:${confidenceColor};">Low</strong>. ${stalledPctDisplay}% of pipeline value ($${stalledValue.toLocaleString()} of $${totalPipelineValue.toLocaleString()}) is stalled — more than three times the 10% threshold for High confidence. Forecast is unreliable until stalled deals are resolved or removed from the pipeline.`;
 
     const executiveSummary = stalls.length === 0
-      ? `Pipeline is active with ${activeDeals.length} open deals totaling $${totalPipelineValue.toLocaleString()}. No stalled deals detected this period. Forecast confidence is <strong>${forecastConfidence}</strong>.`
-      : `Pipeline contains ${activeDeals.length} active deals totaling $${totalPipelineValue.toLocaleString()}. <strong>${stalls.length} deal${stalls.length > 1 ? "s are" : " is"} stalled</strong>, representing $${stalledValue.toLocaleString()} (${stalledPctDisplay}% of pipeline value). Forecast confidence is <strong style="color:${confidenceColor};">${forecastConfidence}</strong>. Immediate action required on ${stalls[0]?.deal_name || "top stalled deal"} (${stalls[0]?.days_stalled} days stalled, $${(stalls[0]?.amount || 0).toLocaleString()}).`;
+      ? `Pipeline contains ${activeDeals.length} active deals totaling $${totalPipelineValue.toLocaleString()}. No stalled deals detected this period. ${confidenceExplanation}`
+      : `Pipeline contains ${activeDeals.length} active deals totaling $${totalPipelineValue.toLocaleString()}. <strong>${stalls.length} deal${stalls.length > 1 ? "s are" : " is"} stalled</strong>, representing $${stalledValue.toLocaleString()} (${stalledPctDisplay}% of pipeline value). ${confidenceExplanation} All ${stalls.length} stalled deal${stalls.length > 1 ? "s require" : " requires"} attention — see the Stalled Deals table below for deal-by-deal status and recommended actions.`;
 
     const thStyle = `style="padding:10px 12px;text-align:left;background:#0D1B2A;color:#fff;font-size:13px;"`;
-    const tdAltStyle = `style="background:#f8f9fa;"`;
+    const tdStyle = `style="padding:10px 12px;border-bottom:1px solid #e0e0e0;"`;
+    const tdBoldStyle = `style="padding:10px 12px;border-bottom:1px solid #e0e0e0;font-weight:bold;"`;
+
+    const stalledRowsHtml = stalls.length === 0
+      ? `<tr><td colspan="7" style="padding:12px;text-align:center;color:#666;border-bottom:1px solid #e0e0e0;">No stalled deals detected.</td></tr>`
+      : stalls.map(s => `
+        <tr style="background:#FFF8EC;">
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;font-weight:bold;">${s.deal_name || "Unnamed Deal"}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${s.owner_id || "Unassigned"}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${stageName(s.deal_stage)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">$${(s.amount || 0).toLocaleString()}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;text-align:center;">${s.days_stalled}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;font-weight:bold;color:#b71c1c;">${s.severity || "AT RISK"}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${s.recommended_action || "Review and re-engage."}</td>
+        </tr>`).join("");
+
+    const allDealsRowsHtml = activeDeals.length === 0
+      ? `<tr><td colspan="4" style="padding:12px;text-align:center;color:#666;border-bottom:1px solid #e0e0e0;">No active deals in pipeline.</td></tr>`
+      : activeDeals.map(d => `
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${d.deal_name || "Unnamed Deal"}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${stageName(d.deal_stage)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">$${(d.amount || 0).toLocaleString()}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;text-align:center;">${d.days_since_activity ?? "Unknown"}</td>
+        </tr>`).join("");
 
     const reportHtml = `
 <div style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;color:#1a1a1a;background:#fff;">
@@ -171,50 +148,23 @@ exports.handler = async (event) => {
 
     <!-- Executive Summary -->
     <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Executive Summary</h2>
-    <p style="font-size:14px;line-height:1.6;margin-bottom:24px;">${executiveSummary}</p>
-
-    <!-- Forecast Confidence -->
-    <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Forecast Confidence: <span style="color:${confidenceColor};">${forecastConfidence}</span></h2>
-    <p style="font-size:14px;line-height:1.6;margin-bottom:24px;">
-      ${stalledPctDisplay}% of total pipeline value ($${stalledValue.toLocaleString()} of $${totalPipelineValue.toLocaleString()}) is currently stalled.
-      ${forecastConfidence === "High" ? "Pipeline is healthy — stalled value is below the 10% threshold." : forecastConfidence === "Medium" ? "Pipeline is at moderate risk — stalled value is between 10–30% of total." : "Pipeline is at significant risk — stalled value exceeds 30% of total. Immediate intervention required."}
-    </p>
+    <p style="font-size:14px;line-height:1.6;margin-bottom:28px;">${executiveSummary}</p>
 
     <!-- Stalled Deals Table -->
     <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Stalled Deals</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:28px;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:32px;">
       <thead>
         <tr>
           <th ${thStyle}>Deal Name</th>
+          <th ${thStyle}>Rep</th>
           <th ${thStyle}>Stage</th>
           <th ${thStyle}>Amount</th>
-          <th ${thStyle}>Business Days Stalled</th>
+          <th ${thStyle}>Days Stalled</th>
           <th ${thStyle}>Severity</th>
           <th ${thStyle}>Recommended Action</th>
         </tr>
       </thead>
       <tbody>${stalledRowsHtml}</tbody>
-    </table>
-
-    <!-- Priority Actions -->
-    <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">This Week's Priority Actions</h2>
-    <ol style="font-size:14px;line-height:1.6;margin-bottom:28px;padding-left:20px;">
-      ${priorityActionsHtml}
-    </ol>
-
-    <!-- Rep Breakdown Table -->
-    <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Rep Breakdown</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:28px;">
-      <thead>
-        <tr>
-          <th ${thStyle}>Rep (Owner ID)</th>
-          <th ${thStyle}>Active Deals</th>
-          <th ${thStyle}>Total Pipeline Value</th>
-          <th ${thStyle}>Stalled Deals</th>
-          <th ${thStyle}>Stalled Value</th>
-        </tr>
-      </thead>
-      <tbody>${repRowsHtml}</tbody>
     </table>
 
     <!-- All Active Deals Table -->

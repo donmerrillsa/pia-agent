@@ -169,26 +169,6 @@ exports.handler = async (event) => {
 
   <div style="padding:0 32px 32px 32px;">
 
-    <!-- Scorecard -->
-    <div style="display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:140px;background:#f8f9fa;border-top:3px solid #0D1B2A;padding:16px 20px;">
-        <p style="margin:0 0 4px 0;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Total Pipeline</p>
-        <p style="margin:0;font-size:22px;font-weight:bold;color:#0D1B2A;">$${totalPipelineValue.toLocaleString()}</p>
-      </div>
-      <div style="flex:1;min-width:140px;background:#f8f9fa;border-top:3px solid #0D1B2A;padding:16px 20px;">
-        <p style="margin:0 0 4px 0;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Active Deals</p>
-        <p style="margin:0;font-size:22px;font-weight:bold;color:#0D1B2A;">${activeDeals.length}</p>
-      </div>
-      <div style="flex:1;min-width:140px;background:#fff3cd;border-top:3px solid #F5A623;padding:16px 20px;">
-        <p style="margin:0 0 4px 0;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Stalled Deals</p>
-        <p style="margin:0;font-size:22px;font-weight:bold;color:#b71c1c;">${stalls.length}</p>
-      </div>
-      <div style="flex:1;min-width:140px;background:#f8f9fa;border-top:3px solid ${confidenceColor};padding:16px 20px;">
-        <p style="margin:0 0 4px 0;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Forecast Confidence</p>
-        <p style="margin:0;font-size:22px;font-weight:bold;color:${confidenceColor};">${forecastConfidence}</p>
-      </div>
-    </div>
-
     <!-- Executive Summary -->
     <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Executive Summary</h2>
     <p style="font-size:14px;line-height:1.6;margin-bottom:24px;">${executiveSummary}</p>

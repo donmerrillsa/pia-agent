@@ -94,7 +94,7 @@ function successResponse(companyName) {
         <head><title>Pipeline Report Running</title></head>
         <body style="font-family: Arial, sans-serif; background:#0D1B2A; color:#fff; text-align:center; padding: 60px 20px;">
           <h1 style="color:#F5A623;">Your Pipeline Integrity Report is running</h1>
-          <p>Thanks${companyName ? `, ${companyName}` : ""} — we're reviewing your pipeline now.</p>
+          <p>Thanks${companyName ? `, ${companyName}` : ""} &mdash; we are reviewing your pipeline now.</p>
           <p>Your report will arrive by email shortly. You can close this page.</p>
         </body>
       </html>

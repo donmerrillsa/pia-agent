@@ -20,6 +20,7 @@
 
 const { getSupabaseClient } = require("./_utils/supabase");
 const { logAction, logError } = require("./_utils/logger");
+const { randomUUID } = require("crypto");
 
 const BASE_URL = "https://pia-agent.netlify.app/.netlify/functions";
 const RESEND_API_URL = "https://api.resend.com/emails";
@@ -45,17 +46,24 @@ async function sendWelcomeEmail(client) {
   const fromEmail = process.env.REPORT_FROM_EMAIL || "pia@buy-mos.com";
   if (!resendKey) return;
 
+  const onDemandLink = `${BASE_URL}/on-demand-trigger?client_id=${client.id}&token=${client.on_demand_token}`;
+
   const html = `
     <div style="font-family: Arial, sans-serif; color: #0D1B2A; max-width: 600px;">
       <h1 style="color: #0D1B2A;">Welcome to PIA — Pipeline Integrity Agent</h1>
       <p>Hi ${client.contact_name || client.company_name},</p>
       <p>Your PIA pilot is now active. Here's what happens next:</p>
       <ul>
-        <li><strong>Every Monday at 7:00 AM CDT</strong> — you'll receive your Monday Morning Pipeline Report</li>
+        <li><strong>Every Monday at 7:00 AM CDT</strong> — you'll receive your Pipeline Integrity Report</li>
         <li><strong>Stalled deals</strong> — any deal over the activity threshold for its stage will be flagged with a recommended action</li>
         <li><strong>Pipeline Health Score</strong> — a 1–10 score with rationale, every week</li>
       </ul>
-      <p>Your first report will arrive this Monday. If you have questions before then, reply to this email.</p>
+      <p>Want a report sooner? Use this link any time — it's yours, and it doesn't expire:</p>
+      <p style="margin: 20px 0;">
+        <a href="${onDemandLink}" style="background: #F5A623; color: #0D1B2A; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Run My Pipeline Report Now</a>
+      </p>
+      <p>Bookmark it — it'll always trigger a fresh report on demand.</p>
+      <p>Your first scheduled report will arrive this Monday. If you have questions before then, reply to this email.</p>
       <p style="margin-top: 32px; color: #666;">
         PIA — Pipeline Integrity Agent<br>
         Merrill & Associates<br>
@@ -156,6 +164,7 @@ exports.handler = async (event) => {
         report_recipients: recipients,
         timezone: timezone || "America/Chicago",
         pilot_start_date: pilot_start_date || new Date().toISOString().split("T")[0],
+        on_demand_token: randomUUID(),
         active: true,
       })
       .select()

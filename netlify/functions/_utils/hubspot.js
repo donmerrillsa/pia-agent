@@ -22,11 +22,11 @@ const DEFAULT_DEAL_PROPERTIES = [
   "hs_next_step",
 ].join(",");
 
-function getHeaders() {
-  const token = process.env.HUBSPOT_ACCESS_TOKEN;
+function getHeaders(token) {
   if (!token) {
     throw new Error(
-      "Missing HUBSPOT_ACCESS_TOKEN. Set it in Netlify environment variables."
+      "Missing HubSpot access token. Each call must pass the requesting client's own token — " +
+      "there is no longer a shared fallback token."
     );
   }
   return {
@@ -82,9 +82,9 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
 }
 
 /**
- * Fetch a single page of deals from HubSpot.
+ * Fetch a single page of deals from HubSpot, using the given client's token.
  */
-async function fetchDealsPage(after = null) {
+async function fetchDealsPage(token, after = null) {
   const params = new URLSearchParams({
     limit: "100",
     properties: DEFAULT_DEAL_PROPERTIES,
@@ -93,19 +93,20 @@ async function fetchDealsPage(after = null) {
   if (after) params.set("after", after);
 
   const url = `${HUBSPOT_BASE}/crm/v3/objects/deals?${params.toString()}`;
-  const response = await fetchWithRetry(url, { headers: getHeaders() });
+  const response = await fetchWithRetry(url, { headers: getHeaders(token) });
   return response.json();
 }
 
 /**
- * Fetch ALL active deals, handling pagination automatically.
+ * Fetch ALL active deals for the given client, handling pagination automatically.
+ * @param {string} token - The client's own HubSpot access token.
  */
-async function fetchAllDeals() {
+async function fetchAllDeals(token) {
   const allDeals = [];
   let after = null;
 
   do {
-    const page = await fetchDealsPage(after);
+    const page = await fetchDealsPage(token, after);
     allDeals.push(...page.results);
     after = page.paging?.next?.after ?? null;
   } while (after);
@@ -116,13 +117,15 @@ async function fetchAllDeals() {
 /**
  * Fetch engagement (activity) data for a single deal using the v1 engagements API.
  * Returns the most recent engagement timestamp (ms), or null if none found.
+ * @param {string} token - The client's own HubSpot access token.
+ * @param {string} dealId
  */
-async function fetchLastActivityForDeal(dealId) {
+async function fetchLastActivityForDeal(token, dealId) {
   const url =
     `${HUBSPOT_BASE}/engagements/v1/engagements/associated/deal/${dealId}/paged?limit=10`;
 
   try {
-    const response = await fetchWithRetry(url, { headers: getHeaders() });
+    const response = await fetchWithRetry(url, { headers: getHeaders(token) });
     const data = await response.json();
     if (!data.results?.length) return null;
 
@@ -140,15 +143,17 @@ async function fetchLastActivityForDeal(dealId) {
 }
 
 /**
- * Fetch a HubSpot owner by ID.
+ * Fetch a HubSpot owner by ID, using the given client's token.
  * Returns { id, email, firstName, lastName, fullName } or null if not found.
+ * @param {string} token - The client's own HubSpot access token.
+ * @param {string} ownerId
  */
-async function fetchOwnerById(ownerId) {
+async function fetchOwnerById(token, ownerId) {
   if (!ownerId) return null;
   try {
     const response = await fetchWithRetry(
       `${HUBSPOT_BASE}/crm/v3/owners/${ownerId}`,
-      { headers: getHeaders() }
+      { headers: getHeaders(token) }
     );
     const data = await response.json();
     return {
@@ -164,14 +169,18 @@ async function fetchOwnerById(ownerId) {
 }
 
 /**
- * Verify the PAT is valid by hitting the owners endpoint (lightweight call).
+ * Verify a PAT is valid by hitting the owners endpoint (lightweight call).
+ * Defaults to the global HUBSPOT_ACCESS_TOKEN env var when no token is
+ * passed — used by hubspot-auth-verify.js as a general system health check,
+ * separate from the per-client validation onboard-client.js does inline.
+ * @param {string} [token]
  * Returns { valid: true, ownerCount } or { valid: false, error }.
  */
-async function verifyAccessToken() {
+async function verifyAccessToken(token = process.env.HUBSPOT_ACCESS_TOKEN) {
   try {
     const response = await fetchWithRetry(
       `${HUBSPOT_BASE}/crm/v3/owners?limit=1`,
-      { headers: getHeaders() }
+      { headers: getHeaders(token) }
     );
     const data = await response.json();
     return { valid: true, ownerCount: data.results?.length ?? 0 };

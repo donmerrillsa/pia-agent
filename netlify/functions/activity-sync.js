@@ -69,6 +69,21 @@ exports.handler = async (event) => {
   const supabase = getSupabaseClient();
 
   try {
+    // Step 0: Look up this client's own HubSpot token — same as deal-sync,
+    // never a shared/global token.
+    const { data: clientRow, error: clientError } = await supabase
+      .from("clients")
+      .select("hubspot_access_token")
+      .eq("id", client_id)
+      .single();
+
+    if (clientError || !clientRow?.hubspot_access_token) {
+      throw new Error(
+        `No HubSpot token found for client ${client_id}. Cannot sync activity without it.`
+      );
+    }
+    const hubspotToken = clientRow.hubspot_access_token;
+
     // Step 1: Load all deals for this client from deals_cache
     const { data: deals, error: fetchError } = await supabase
       .from("deals_cache")
@@ -103,6 +118,7 @@ exports.handler = async (event) => {
         batch.map(async (deal) => {
           try {
             const lastActivityTs = await fetchLastActivityForDeal(
+              hubspotToken,
               deal.hubspot_deal_id
             );
 

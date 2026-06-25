@@ -11,7 +11,6 @@
 
 const { randomUUID } = require("crypto");
 const { getSupabaseClient } = require("./_utils/supabase");
-const { fetchAllDeals, fetchLastActivityForDeal } = require("./_utils/hubspot");
 const { logAction, logError } = require("./_utils/logger");
 const { sendAdminAlert } = require("./send-report");
 

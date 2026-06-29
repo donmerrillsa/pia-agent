@@ -50,9 +50,9 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
     // D-02: Auth failure — throw immediately, do not retry
     if (response.status === 401) {
       throw new Error(
-        "HubSpot authentication failed (401 Unauthorized). " +
-        "Check that HUBSPOT_ACCESS_TOKEN is valid and has not expired. " +
-        "Admin alert: rotate or reissue the token in HubSpot Private Apps."
+        "HubSpot authentication failed (401 Unauthorized) for this client. " +
+        "The client's stored hubspot_access_token in the Supabase clients table " +
+        "may be invalid, expired, or missing. Check that row and reissue the token if needed."
       );
     }
 

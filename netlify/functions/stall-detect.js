@@ -89,22 +89,22 @@ function getRecommendedAction(deal) {
   const stage = (deal.deal_stage || "").toLowerCase();
 
   if (stage.includes("contract") || stage === "3749122784") {
-    return "CSO: Ask the rep directly whether legal review is complete or what's actually blocking signature. " +
+    return "CSO: Ask the rep directly whether legal review is complete or what's actually blocking signature.<br><br>" +
            "Rep: Contact the buyer today to confirm contract status and surface any blocking concerns.";
   }
   if (stage.includes("decision") || stage === "3755051726") {
-    return "CSO: Confirm with the rep whether the decision maker has gone genuinely quiet or just busy. " +
+    return "CSO: Confirm with the rep whether the decision maker has gone genuinely quiet or just busy.<br><br>" +
            "Rep: Re-engage the decision maker with a value reminder or case study and request a 15-minute check-in.";
   }
   if (stage.includes("presentation") || stage === "3752325848" || stage === "3749122783") {
-    return "CSO: Ask the rep what specific objection or question is actually holding this deal back. " +
+    return "CSO: Ask the rep what specific objection or question is actually holding this deal back.<br><br>" +
            "Rep: Follow up on presentation feedback and ask what questions remain before moving forward.";
   }
   if (days > 30) {
-    return "CSO: This deal has likely been carried in the forecast too long — review with the rep whether it should be marked lost. " +
+    return "CSO: This deal has likely been carried in the forecast too long — review with the rep whether it should be marked lost.<br><br>" +
            "Rep: Have a direct, honest conversation with the buyer to assess whether this deal is still viable.";
   }
-  return "CSO: Confirm this deal still belongs in active forecast given the silence. " +
+  return "CSO: Confirm this deal still belongs in active forecast given the silence.<br><br>" +
          "Rep: Re-engage the contact with a value-add touchpoint and an open question about their current priority.";
 }
 

@@ -174,6 +174,11 @@ exports.handler = async (event) => {
 
     <!-- Stalled Deals Table -->
     <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Stalled Deals</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">
+      <strong>Stated Probability</strong> is the close probability the rep has assigned in HubSpot.
+      A probability of 60% or higher on a deal that's already stalled is flagged in red — the deal's
+      activity contradicts how likely the rep believes it is to close.
+    </p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:32px;">
       <thead>
         <tr>

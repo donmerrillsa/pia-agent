@@ -3,7 +3,7 @@
 // 1. deal-sync       — pull deals from HubSpot into Supabase
 // 2. activity-sync   — update last activity dates
 // 3. stall-detect    — flag stalled deals
-// 4. generate-report — build the Monday Morning Pipeline Report
+// 4. generate-report — build the weekly Pipeline Integrity Report
 // 5. send-report     — email it to recipients
 //
 // POST /.netlify/functions/run-pipeline

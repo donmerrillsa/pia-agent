@@ -52,9 +52,9 @@ async function sendWelcomeEmail(client) {
     <div style="font-family: Arial, sans-serif; color: #0D1B2A; max-width: 600px;">
       <h1 style="color: #0D1B2A;">Welcome to PIA — Pipeline Integrity Agent</h1>
       <p>Hi ${client.contact_name || client.company_name},</p>
-      <p>Your PIA pilot is now active. Here's what happens next:</p>
+      <p>Your Pipeline Integrity Agent pilot is now active. Here's what happens next:</p>
       <ul>
-        <li><strong>Every Monday at 7:00 AM CDT</strong> — you'll receive your Pipeline Integrity Report</li>
+        <li><strong>Every Friday at 7:00 AM CDT</strong> — you'll receive your Pipeline Integrity Report</li>
         <li><strong>Stalled deals</strong> — any deal over the activity threshold for its stage will be flagged with a recommended action</li>
         <li><strong>Pipeline Health Score</strong> — a 1–10 score with rationale, every week</li>
       </ul>
@@ -63,7 +63,7 @@ async function sendWelcomeEmail(client) {
         <a href="${onDemandLink}" style="background: #F5A623; color: #0D1B2A; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Run My Pipeline Report Now</a>
       </p>
       <p>Bookmark it — it'll always trigger a fresh report on demand.</p>
-      <p>Your first scheduled report will arrive this Monday. If you have questions before then, reply to this email.</p>
+      <p>Your first scheduled report will arrive this Friday. If you have questions before then, reply to this email.</p>
       <p style="margin-top: 32px; color: #666;">
         PIA — Pipeline Integrity Agent<br>
         Merrill & Associates<br>
@@ -206,7 +206,7 @@ exports.handler = async (event) => {
       initial_deals_found: dealsFound,
       pilot_start_date: client.pilot_start_date,
       duration_ms: duration,
-      message: `${company_name} successfully onboarded. Welcome email sent. First report arrives Monday at 7:00 AM CDT.`,
+      message: `${company_name} successfully onboarded. Welcome email sent. First report arrives Friday at 7:00 AM CDT.`,
     });
 
   } catch (err) {

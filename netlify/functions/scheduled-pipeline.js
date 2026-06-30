@@ -1,5 +1,5 @@
 // netlify/functions/scheduled-pipeline.js
-// Netlify scheduled function — runs every Monday at 12:00 PM UTC (7:00 AM CDT).
+// Netlify scheduled function — runs every Friday at 12:00 PM UTC (7:00 AM CDT).
 // Loops through ALL active clients and runs the full pipeline for each.
 //
 // Schedule is set in netlify.toml.

@@ -89,18 +89,23 @@ function getRecommendedAction(deal) {
   const stage = (deal.deal_stage || "").toLowerCase();
 
   if (stage.includes("contract") || stage === "3749122784") {
-    return "Follow up on contract status. Ask if legal review is complete or if there are blocking concerns.";
+    return "CSO: Ask the rep directly whether legal review is complete or what's actually blocking signature. " +
+           "Rep: Contact the buyer today to confirm contract status and surface any blocking concerns.";
   }
   if (stage.includes("decision") || stage === "3755051726") {
-    return "Re-engage decision maker. Send value reminder or case study. Request a 15-minute check-in.";
+    return "CSO: Confirm with the rep whether the decision maker has gone genuinely quiet or just busy. " +
+           "Rep: Re-engage the decision maker with a value reminder or case study and request a 15-minute check-in.";
   }
   if (stage.includes("presentation") || stage === "3752325848" || stage === "3749122783") {
-    return "Follow up on presentation feedback. Ask what questions remain before moving forward.";
+    return "CSO: Ask the rep what specific objection or question is actually holding this deal back. " +
+           "Rep: Follow up on presentation feedback and ask what questions remain before moving forward.";
   }
   if (days > 30) {
-    return "Deal critically stalled. Consider marking lost or scheduling a direct conversation to assess viability.";
+    return "CSO: This deal has likely been carried in the forecast too long — review with the rep whether it should be marked lost. " +
+           "Rep: Have a direct, honest conversation with the buyer to assess whether this deal is still viable.";
   }
-  return "Re-engage contact with a value-add touchpoint. Ask an open question about their current priority.";
+  return "CSO: Confirm this deal still belongs in active forecast given the silence. " +
+         "Rep: Re-engage the contact with a value-add touchpoint and an open question about their current priority.";
 }
 
 exports.handler = async (event) => {

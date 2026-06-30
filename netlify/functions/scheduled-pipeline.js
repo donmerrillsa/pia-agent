@@ -33,11 +33,15 @@ exports.handler = async (event) => {
   const startTime = Date.now();
   const supabase = getSupabaseClient();
 
-  // ── Load all active clients ───────────────────────────────
+  // ── Load all active, non-test clients ─────────────────────
+  // is_test rows (sandbox/dev clients with no real ongoing data hygiene)
+  // are deliberately excluded so stale test credentials never trigger
+  // a production-looking admin alert again.
   const { data: clients, error: clientsError } = await supabase
     .from("clients")
     .select("id, company_name, contact_email")
-    .eq("active", true);
+    .eq("active", true)
+    .eq("is_test", false);
 
   if (clientsError) {
     console.error("[scheduled-pipeline] Failed to load clients:", clientsError.message);

@@ -3,6 +3,11 @@
 // Flags stalled deals by writing to stall_events.
 // A deal is stalled when days_since_activity exceeds the threshold for its stage.
 //
+// NEW (Daily Pipeline Pulse build, July 15): also RESOLVES stall_events —
+// if a deal has an existing unresolved stall_event but its days_since_activity
+// has dropped back under threshold (rep re-engaged), mark that row resolved.
+// This is what powers the "back on track" section of the Daily Pipeline Pulse.
+//
 // POST /.netlify/functions/stall-detect
 // Body: { "client_id": "<uuid>" }
 
@@ -155,6 +160,7 @@ exports.handler = async (event) => {
         success: true,
         deals_evaluated: 0,
         stalls_flagged: 0,
+        stalls_resolved: 0,
         message: "No deals found for this client.",
         duration_ms: Date.now() - startTime,
       });
@@ -162,6 +168,7 @@ exports.handler = async (event) => {
 
     // Step 3: Evaluate each deal for stalls
     const stalledDeals = [];
+    const noLongerStalledDealIds = []; // NEW: deals that are back under threshold
 
     for (const deal of deals) {
       if (isClosedStage(deal.deal_stage)) continue;
@@ -170,9 +177,38 @@ exports.handler = async (event) => {
       if (threshold === null) continue;
 
       const daysStalled = deal.days_since_activity;
-      if (daysStalled === null || daysStalled <= threshold) continue;
+
+      if (daysStalled === null || daysStalled <= threshold) {
+        // NEW: deal is currently healthy (or has no activity data) —
+        // track it as a candidate for resolving any existing stall_event.
+        noLongerStalledDealIds.push(deal.hubspot_deal_id);
+        continue;
+      }
 
       stalledDeals.push({ deal, threshold, daysStalled });
+    }
+
+    // ── NEW Step 3a: Resolve stall_events for deals that are back under threshold ──
+    let resolvedCount = 0;
+    if (noLongerStalledDealIds.length > 0) {
+      const { data: resolvedRows, error: resolveError } = await supabase
+        .from("stall_events")
+        .update({ resolved: true, resolved_at: new Date().toISOString() })
+        .eq("client_id", client_id)
+        .eq("resolved", false)
+        .in("hubspot_deal_id", noLongerStalledDealIds)
+        .select("id");
+
+      if (resolveError) {
+        // Non-fatal — log and continue. Don't let a resolve failure block
+        // new-stall detection below.
+        console.warn(`[stall-detect] Failed to resolve stall events: ${resolveError.message}`);
+      } else {
+        resolvedCount = (resolvedRows || []).length;
+        if (resolvedCount > 0) {
+          console.log(`[stall-detect] Resolved ${resolvedCount} stall event(s) — deal(s) back under threshold.`);
+        }
+      }
     }
 
     if (stalledDeals.length === 0) {
@@ -180,7 +216,7 @@ exports.handler = async (event) => {
         client_id,
         run_id,
         action_type: "stall_detect",
-        notes: `Evaluated ${deals.length} deals — no stalls detected`,
+        notes: `Evaluated ${deals.length} deals — no stalls detected, ${resolvedCount} resolved`,
         success: true,
       });
 
@@ -188,6 +224,7 @@ exports.handler = async (event) => {
         success: true,
         deals_evaluated: deals.length,
         stalls_flagged: 0,
+        stalls_resolved: resolvedCount,
         message: "No stalled deals detected.",
         duration_ms: Date.now() - startTime,
       });
@@ -240,7 +277,7 @@ exports.handler = async (event) => {
       client_id,
       run_id,
       action_type: "stall_detect",
-      notes: `Evaluated ${deals.length} deals — ${stalledDeals.length} stalled, ${newStalls.length} newly flagged`,
+      notes: `Evaluated ${deals.length} deals — ${stalledDeals.length} stalled, ${newStalls.length} newly flagged, ${resolvedCount} resolved`,
       success: true,
     });
 
@@ -251,6 +288,7 @@ exports.handler = async (event) => {
       stalls_flagged: stalledDeals.length,
       new_stall_events: newStalls.length,
       existing_stalls: alreadyFlagged.size,
+      stalls_resolved: resolvedCount,
       stalled_deals: stalledDeals.map(({ deal, daysStalled, threshold }) => ({
         deal_name: deal.deal_name,
         deal_stage: deal.deal_stage,

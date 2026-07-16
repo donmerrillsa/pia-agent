@@ -32,11 +32,28 @@ exports.handler = async (event) => {
 
   console.log(`[deal-sync] Starting sync for client ${client_id}`);
   const startTime = Date.now();
+  const supabase = getSupabaseClient();
 
   try {
     // â”€â”€ Step 1: Fetch all deals from HubSpot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     console.log("[deal-sync] Fetching deals from HubSpot...");
-    const deals = await fetchAllDeals();
+
+    // Every client connects their own HubSpot portal at onboarding —
+    // we never use a shared/global token here.
+    const { data: clientRow, error: clientError } = await supabase
+      .from("clients")
+      .select("hubspot_access_token")
+      .eq("id", client_id)
+      .single();
+
+    if (clientError || !clientRow?.hubspot_access_token) {
+      throw new Error(
+        `No HubSpot token found for client ${client_id}. Cannot sync without it.`
+      );
+    }
+    const hubspotToken = clientRow.hubspot_access_token;
+
+    const deals = await fetchAllDeals(hubspotToken);
     console.log(`[deal-sync] Fetched ${deals.length} deals from HubSpot`);
 
     if (deals.length === 0) {
@@ -62,7 +79,7 @@ exports.handler = async (event) => {
     )];
     const ownerCache = {};
     for (const ownerId of ownerIds) {
-      ownerCache[ownerId] = await fetchOwnerById(ownerId);
+      ownerCache[ownerId] = await fetchOwnerById(hubspotToken, ownerId);
     }
     console.log(`[deal-sync] Resolved ${Object.keys(ownerCache).length} owner(s)`);
 
@@ -113,7 +130,6 @@ exports.handler = async (event) => {
     // UPSERT: update existing rows, insert new ones.
     // The UNIQUE constraint on (client_id, hubspot_deal_id) handles deduplication.
     console.log(`[deal-sync] Upserting ${rows.length} deals into Supabase...`);
-    const supabase = getSupabaseClient();
 
     const { error: upsertError } = await supabase
       .from("deals_cache")

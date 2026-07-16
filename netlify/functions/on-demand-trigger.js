@@ -63,25 +63,27 @@ exports.handler = async function (event) {
     return htmlResponse(403, "This account is not currently active. Please contact us if you believe this is an error.");
   }
 
-  // Token is valid — trigger the real pipeline run
+  // Token is valid — kick off the real pipeline run as a background job
+  // so this confirmation page responds in well under a second instead
+  // of making the customer wait ~30s for the full pipeline to finish.
+  // Background functions return an instant 202 and then keep running
+  // independently for up to 15 minutes — the email arrives once it's done.
   try {
-    const response = await fetch(`${BASE_URL}/run-pipeline`, {
+    const response = await fetch(`${BASE_URL}/run-pipeline-background`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client_id: client.id, send_email: true }),
     });
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error(`[on-demand-trigger] run-pipeline failed for ${client_id}:`, result);
-      return htmlResponse(500, "We hit a problem running your report. Our team has been notified. Please try again shortly.");
+    if (response.status !== 202) {
+      console.error(`[on-demand-trigger] Unexpected status starting background pipeline for ${client_id}: ${response.status}`);
+      return htmlResponse(500, "We hit a problem starting your report. Our team has been notified. Please try again shortly.");
     }
 
     return successResponse(client.company_name);
   } catch (err) {
-    console.error("[on-demand-trigger] Unexpected error calling run-pipeline:", err);
-    return htmlResponse(500, "We hit a problem running your report. Our team has been notified. Please try again shortly.");
+    console.error("[on-demand-trigger] Unexpected error starting background pipeline:", err);
+    return htmlResponse(500, "We hit a problem starting your report. Our team has been notified. Please try again shortly.");
   }
 };
 

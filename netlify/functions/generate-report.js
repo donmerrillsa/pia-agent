@@ -73,6 +73,12 @@ exports.handler = async (event) => {
 
     if (dealsError) throw new Error(`Failed to load deals: ${dealsError.message}`);
 
+    // Lookup map so stall rows (which don't store stage_probability directly)
+    // can pull it from the matching deals_cache row at render time.
+    const probabilityByDealId = new Map(
+      deals.map(d => [d.hubspot_deal_id, d.stage_probability])
+    );
+
     // ── Step 3: Load unresolved stall events ────────────────────────────────
     const { data: stalls, error: stallsError } = await supabase
       .from("stall_events")
@@ -113,17 +119,32 @@ exports.handler = async (event) => {
     const tdBoldStyle = `style="padding:10px 12px;border-bottom:1px solid #e0e0e0;font-weight:bold;"`;
 
     const stalledRowsHtml = stalls.length === 0
-      ? `<tr><td colspan="7" style="padding:12px;text-align:center;color:#666;border-bottom:1px solid #e0e0e0;">No stalled deals detected.</td></tr>`
-      : stalls.map(s => `
+      ? `<tr><td colspan="8" style="padding:12px;text-align:center;color:#666;border-bottom:1px solid #e0e0e0;">No stalled deals detected.</td></tr>`
+      : stalls.map(s => {
+        const prob = probabilityByDealId.get(s.hubspot_deal_id);
+        const hasProb = typeof prob === "number" && !Number.isNaN(prob);
+        const probPct = hasProb ? Math.round(prob * 100) : null;
+        // A deal both stalled (it's in this table at all) and self-reported
+        // as high-probability is a contradiction worth calling out visually —
+        // this does not change the rep's number, only flags it for review.
+        const isContradiction = hasProb && probPct >= 60;
+        const probCell = !hasProb
+          ? `<span style="color:#999;">&mdash;</span>`
+          : isContradiction
+          ? `<strong style="color:#b71c1c;">${probPct}%&nbsp;&#9888;</strong>`
+          : `${probPct}%`;
+        return `
         <tr style="background:#FFF8EC;">
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;font-weight:bold;">${s.deal_name || "Unnamed Deal"}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${s.owner_id || "Unassigned"}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${stageName(s.deal_stage)}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">$${(s.amount || 0).toLocaleString()}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;text-align:center;">${probCell}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;text-align:center;">${s.days_stalled}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;font-weight:bold;color:#b71c1c;">${s.severity || "AT RISK"}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e0e0e0;">${s.recommended_action || "Review and re-engage."}</td>
-        </tr>`).join("");
+        </tr>`;
+      }).join("");
 
     const allDealsRowsHtml = activeDeals.length === 0
       ? `<tr><td colspan="4" style="padding:12px;text-align:center;color:#666;border-bottom:1px solid #e0e0e0;">No active deals in pipeline.</td></tr>`
@@ -153,6 +174,11 @@ exports.handler = async (event) => {
 
     <!-- Stalled Deals Table -->
     <h2 style="font-size:15px;color:#0D1B2A;border-bottom:2px solid #0D1B2A;padding-bottom:6px;margin-bottom:12px;">Stalled Deals</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">
+      <strong>Stated Probability</strong> is the close probability the rep has assigned in HubSpot.
+      A probability of 60% or higher on a deal that's already stalled is flagged in red — the deal's
+      activity contradicts how likely the rep believes it is to close.
+    </p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:32px;">
       <thead>
         <tr>
@@ -160,6 +186,7 @@ exports.handler = async (event) => {
           <th ${thStyle}>Rep</th>
           <th ${thStyle}>Stage</th>
           <th ${thStyle}>Amount</th>
+          <th ${thStyle}>Stated Probability</th>
           <th ${thStyle}>Days Stalled</th>
           <th ${thStyle}>Severity</th>
           <th ${thStyle}>Recommended Action</th>

@@ -1,5 +1,5 @@
 // netlify/functions/scheduled-pipeline.js
-// Netlify scheduled function — runs every Monday at 12:00 PM UTC (7:00 AM CDT).
+// Netlify scheduled function — runs every Friday at 12:00 PM UTC (7:00 AM CDT).
 // Loops through ALL active clients and runs the full pipeline for each.
 //
 // Schedule is set in netlify.toml.
@@ -33,11 +33,15 @@ exports.handler = async (event) => {
   const startTime = Date.now();
   const supabase = getSupabaseClient();
 
-  // ── Load all active clients ───────────────────────────────
+  // ── Load all active, non-test clients ─────────────────────
+  // is_test rows (sandbox/dev clients with no real ongoing data hygiene)
+  // are deliberately excluded so stale test credentials never trigger
+  // a production-looking admin alert again.
   const { data: clients, error: clientsError } = await supabase
     .from("clients")
     .select("id, company_name, contact_email")
-    .eq("active", true);
+    .eq("active", true)
+    .eq("is_test", false);
 
   if (clientsError) {
     console.error("[scheduled-pipeline] Failed to load clients:", clientsError.message);

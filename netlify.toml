@@ -5,10 +5,16 @@
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
 
-# ── Scheduled function — Monday Morning Pipeline Run ─────────
-# Runs every Monday at 12:00 PM UTC = 7:00 AM CDT
+# ── Scheduled function — Weekly Pipeline Integrity Report ────
+# Runs every Friday at 12:00 PM UTC = 7:00 AM CDT
 [functions."scheduled-pipeline"]
   schedule = "0 12 * * 5"
+
+# ── Scheduled function — Daily Pipeline Pulse ────────────────
+# Runs Monday–Thursday at 12:00 PM UTC = 7:00 AM CDT
+# No Pulse on Friday — CSO receives the full weekly report instead
+[functions."scheduled-daily-pulse"]
+  schedule = "0 12 * * 1-4"
 
 [dev]
   framework = "#custom"

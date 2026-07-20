@@ -2,6 +2,13 @@
 // Pulls all active deals from HubSpot and writes them to deals_cache in Supabase.
 // Called manually during setup, and will be triggered on a schedule in Phase 2.
 //
+// FIXED (July 20, 2026): the empty-fetch case used to return early, before the
+// cleanup step ever ran — meaning if a client's HubSpot pipeline went to zero
+// deals (e.g. all deals deleted), every stale row stayed in deals_cache forever.
+// Those ghost rows then fed a downstream bug in stall-detect.js where deleted
+// deals got misreported as "resolved" / "back on track." Cleanup now runs
+// unconditionally, including on an empty fetch.
+//
 // POST /.netlify/functions/deal-sync
 // Body: { "client_id": "<uuid>" }
 
@@ -35,7 +42,7 @@ exports.handler = async (event) => {
   const supabase = getSupabaseClient();
 
   try {
-    // â”€â”€ Step 1: Fetch all deals from HubSpot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 1: Fetch all deals from HubSpot ─────────────────────────────
     console.log("[deal-sync] Fetching deals from HubSpot...");
 
     // Every client connects their own HubSpot portal at onboarding —
@@ -56,23 +63,39 @@ exports.handler = async (event) => {
     const deals = await fetchAllDeals(hubspotToken);
     console.log(`[deal-sync] Fetched ${deals.length} deals from HubSpot`);
 
+    // FIXED: this used to return here immediately on an empty fetch, skipping
+    // the cleanup step below entirely. Now it falls through to cleanup first,
+    // so any deals_cache rows left over from a now-empty HubSpot pipeline get
+    // removed instead of going stale forever.
     if (deals.length === 0) {
+      console.log("[deal-sync] No active deals in HubSpot — clearing deals_cache for this client.");
+
+      const { error: emptyCleanupError } = await supabase
+        .from("deals_cache")
+        .delete()
+        .eq("client_id", client_id);
+
+      if (emptyCleanupError) {
+        // Non-fatal — log but don't fail the sync
+        console.warn("[deal-sync] Empty-pipeline cleanup failed:", emptyCleanupError.message);
+      }
+
       await logAction({
         client_id,
         run_id,
         action_type: "deal_sync",
-        notes: "Sync completed â€” no active deals found in HubSpot",
+        notes: "Sync completed — no active deals found in HubSpot; deals_cache cleared",
         success: true,
       });
       return respond(200, {
         success: true,
         deals_synced: 0,
-        message: "No active deals found in HubSpot.",
+        message: "No active deals found in HubSpot. deals_cache cleared.",
         duration_ms: Date.now() - startTime,
       });
     }
 
-    // â”€â”€ Step 2: Build owner cache to avoid redundant API calls â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 2: Build owner cache to avoid redundant API calls ───────────
     // Collect unique owner IDs, then fetch them all once.
     const ownerIds = [...new Set(
       deals.map(d => d.properties?.hubspot_owner_id).filter(Boolean)
@@ -83,7 +106,7 @@ exports.handler = async (event) => {
     }
     console.log(`[deal-sync] Resolved ${Object.keys(ownerCache).length} owner(s)`);
 
-    // â”€â”€ Step 3: Transform deals into deals_cache rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 3: Transform deals into deals_cache rows ─────────────────────
     const now = new Date().toISOString();
     const rows = await Promise.all(deals.map(async (deal) => {
       const props = deal.properties || {};
@@ -126,7 +149,7 @@ exports.handler = async (event) => {
       };
     }));
 
-    // â”€â”€ Step 4: Upsert into deals_cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 4: Upsert into deals_cache ───────────────────────────────────
     // UPSERT: update existing rows, insert new ones.
     // The UNIQUE constraint on (client_id, hubspot_deal_id) handles deduplication.
     console.log(`[deal-sync] Upserting ${rows.length} deals into Supabase...`);
@@ -142,7 +165,7 @@ exports.handler = async (event) => {
       throw new Error(`Supabase upsert failed: ${upsertError.message}`);
     }
 
-    // â”€â”€ Step 5: Remove deals no longer in HubSpot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 5: Remove deals no longer in HubSpot ─────────────────────────
     // Any deal in deals_cache that wasn't in this sync is closed/deleted.
     const activeIds = deals.map((d) => d.id);
     const { error: deleteError } = await supabase
@@ -152,14 +175,14 @@ exports.handler = async (event) => {
       .not("hubspot_deal_id", "in", `(${activeIds.join(",")})`);
 
     if (deleteError) {
-      // Non-fatal â€” log but don't fail the sync
+      // Non-fatal — log but don't fail the sync
       console.warn("[deal-sync] Cleanup delete failed:", deleteError.message);
     }
 
     const duration = Date.now() - startTime;
     console.log(`[deal-sync] Sync complete. ${rows.length} deals in ${duration}ms`);
 
-    // â”€â”€ Step 6: Log the action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 6: Log the action ────────────────────────────────────────────
     await logAction({
       client_id,
       run_id,

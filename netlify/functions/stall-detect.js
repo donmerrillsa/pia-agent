@@ -8,6 +8,15 @@
 // has dropped back under threshold (rep re-engaged), mark that row resolved.
 // This is what powers the "back on track" section of the Daily Pipeline Pulse.
 //
+// FIXED (July 20, 2026): days_since_activity === null was being treated the
+// same as "genuinely under threshold" when deciding whether to resolve a
+// stall_event. null means "no activity data available" — most commonly
+// because the deal no longer exists in HubSpot (deleted) — not "the rep
+// re-engaged today." Resolving a stall_event on null data produced a false
+// "Back on Track — Rep re-engaged, activity resumed" claim on deals that had
+// actually just been deleted. null now leaves any existing stall_event
+// untouched instead of resolving it.
+//
 // POST /.netlify/functions/stall-detect
 // Body: { "client_id": "<uuid>" }
 
@@ -173,7 +182,7 @@ exports.handler = async (event) => {
 
     // Step 3: Evaluate each deal for stalls
     const stalledDeals = [];
-    const noLongerStalledDealIds = []; // NEW: deals that are back under threshold
+    const noLongerStalledDealIds = []; // deals genuinely back under threshold
 
     for (const deal of deals) {
       if (isClosedStage(deal.deal_stage)) continue;
@@ -183,9 +192,17 @@ exports.handler = async (event) => {
 
       const daysStalled = deal.days_since_activity;
 
-      if (daysStalled === null || daysStalled <= threshold) {
-        // NEW: deal is currently healthy (or has no activity data) —
-        // track it as a candidate for resolving any existing stall_event.
+      // FIXED: null (no activity data — most often an orphaned/deleted deal)
+      // is no longer treated as "genuinely healthy." Only a real, measured
+      // day-count under threshold counts as a candidate for resolving an
+      // existing stall_event. null deals are simply skipped — left as
+      // whatever state they were already in, neither newly flagged nor
+      // falsely resolved.
+      if (daysStalled === null) {
+        continue;
+      }
+
+      if (daysStalled <= threshold) {
         noLongerStalledDealIds.push(deal.hubspot_deal_id);
         continue;
       }
@@ -193,7 +210,7 @@ exports.handler = async (event) => {
       stalledDeals.push({ deal, threshold, daysStalled });
     }
 
-    // ── NEW Step 3a: Resolve stall_events for deals that are back under threshold ──
+    // ── Step 3a: Resolve stall_events for deals genuinely back under threshold ──
     let resolvedCount = 0;
     if (noLongerStalledDealIds.length > 0) {
       const { data: resolvedRows, error: resolveError } = await supabase

@@ -124,11 +124,17 @@ exports.handler = async (event) => {
     const estimateUrl = `${baseUrl}/estimate/${estimateId}`;
     const editUrl = `${baseUrl}/estimate-form.html?id=${estimateId}`;
 
-    // ── Step 4: Notify the business owner (non-blocking) ─────────
-    // A failure here should never fail the save itself — the estimate
-    // is already safely stored either way.
-    notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, customer_name, isEdit)
-      .catch((err) => console.error("[submit-estimate] Owner notification failed:", err.message));
+    // ── Step 4: Notify the business owner ─────────────────────────
+    // Awaited on purpose — Netlify can freeze this function's execution
+    // the instant a response is returned, which would silently kill a
+    // true fire-and-forget call before the Resend request completed.
+    // A failure here is caught and logged, but never fails the save
+    // itself — the estimate is already safely stored either way.
+    try {
+      await notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, customer_name, isEdit);
+    } catch (err) {
+      console.error("[submit-estimate] Owner notification failed:", err.message);
+    }
 
     return respond(200, {
       success: true,
@@ -167,9 +173,16 @@ async function notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, 
     .eq("id", business_id)
     .single();
 
-  if (error || !business || !business.notification_email) {
-    return; // no notification email on file — nothing to send
+  if (error) {
+    console.warn(`[submit-estimate] Could not look up business ${business_id} for owner notification:`, error.message);
+    return;
   }
+  if (!business || !business.notification_email) {
+    console.warn(`[submit-estimate] No notification_email on file for business ${business_id} — skipping owner notification.`);
+    return;
+  }
+
+  console.log(`[submit-estimate] Sending owner notification to ${business.notification_email}...`);
 
   const fromEmail = process.env.ESTIMATE_FROM_EMAIL || process.env.REPORT_FROM_EMAIL || "pia@buy-mos.com";
   const subject = `${isEdit ? "Updated" : "New"} Estimate${customerName ? " — " + customerName : ""}`;
@@ -197,6 +210,8 @@ async function notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, 
     const errBody = await res.text();
     throw new Error(`Resend API failed [${res.status}]: ${errBody}`);
   }
+
+  console.log(`[submit-estimate] Owner notification sent successfully to ${business.notification_email}`);
 }
 
 /**

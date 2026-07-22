@@ -257,6 +257,18 @@
           <label for="technician">Technician</label>
           <input type="text" id="technician" name="technician">
         </div>
+        <div class="field">
+          <label for="scope_of_work">Scope of Work</label>
+          <textarea id="scope_of_work" name="scope_of_work" placeholder="What's included in the install — removal of old equipment, refrigerant line work, electrical, ductwork, etc."></textarea>
+        </div>
+        <div class="field">
+          <label for="financing_options">Financing Options</label>
+          <textarea id="financing_options" name="financing_options" placeholder="e.g. 0% for 12 months on approved credit, or ask about our payment plans"></textarea>
+        </div>
+        <div class="field">
+          <label for="expires_date">Proposal Expires</label>
+          <input type="date" id="expires_date" name="expires_date">
+        </div>
       </div>
     </div>
 
@@ -485,6 +497,9 @@
       document.getElementById('current_system').value = e.current_system || '';
       document.getElementById('diagnosis').value = e.diagnosis || '';
       document.getElementById('technician').value = e.technician || '';
+      document.getElementById('scope_of_work').value = e.scope_of_work || '';
+      document.getElementById('financing_options').value = e.financing_options || '';
+      if (e.expires_date) document.getElementById('expires_date').value = e.expires_date;
 
       for (const tier of ['good', 'better', 'best']) {
         document.getElementById(tier + '_brand').value = e[tier + '_brand'] || '';
@@ -519,6 +534,9 @@
       current_system: document.getElementById('current_system').value,
       diagnosis: document.getElementById('diagnosis').value,
       technician: document.getElementById('technician').value,
+      scope_of_work: document.getElementById('scope_of_work').value,
+      financing_options: document.getElementById('financing_options').value,
+      expires_date: document.getElementById('expires_date').value,
       good: buildTierPayload('good'),
       better: buildTierPayload('better'),
       best: buildTierPayload('best'),

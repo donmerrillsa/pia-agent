@@ -97,6 +97,19 @@ function featuresListHtml(featuresText) {
   return `<ul class="features">` + lines.map(l => `<li>${esc(l)}</li>`).join("") + `</ul>`;
 }
 
+function multilineHtml(text) {
+  if (!text) return "";
+  return esc(text).replace(/\n/g, "<br>");
+}
+
+function isExpired(expiresDate) {
+  if (!expiresDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const exp = new Date(expiresDate + "T00:00:00");
+  return exp < today;
+}
+
 function tierCardHtml(label, tier, data, accentColor) {
   const hasContent = data.brand || data.price || data.warranty || data.features;
   if (!hasContent) return "";
@@ -118,18 +131,19 @@ function tierCardHtml(label, tier, data, accentColor) {
 function renderEstimatePage(estimate, business) {
   const primary = business.primary_color || "#12283C";
   const accent = business.accent_color || "#FE8D00";
+  const expired = isExpired(estimate.expires_date);
 
-  const goodCard = tierCardHtml("Good", "good", {
+  const goodCard = tierCardHtml("A Good Option", "good", {
     brand: estimate.good_brand, seer: estimate.good_seer, price: estimate.good_price,
     warranty: estimate.good_warranty, features: estimate.good_features, photo_url: estimate.good_photo_url,
   }, accent);
 
-  const betterCard = tierCardHtml("Better", "better", {
+  const betterCard = tierCardHtml("A Better Option", "better", {
     brand: estimate.better_brand, seer: estimate.better_seer, price: estimate.better_price,
     warranty: estimate.better_warranty, features: estimate.better_features, photo_url: estimate.better_photo_url,
   }, accent);
 
-  const bestCard = tierCardHtml("Best", "best", {
+  const bestCard = tierCardHtml("The Best Option", "best", {
     brand: estimate.best_brand, seer: estimate.best_seer, price: estimate.best_price,
     warranty: estimate.best_warranty, features: estimate.best_features, photo_url: estimate.best_photo_url,
   }, accent);
@@ -230,6 +244,29 @@ function renderEstimatePage(estimate, business) {
   .features li{ margin-bottom:4px; }
   .tier-photo img{ width:100%; border-radius:5px; border:1px solid var(--hairline); display:block; }
 
+  .info-block{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    padding:18px 20px;
+    font-size:14px;
+    line-height:1.6;
+    color:var(--ink);
+    max-width:600px;
+    margin:0 auto;
+  }
+
+  .expired-banner{
+    background:#FBEAEA;
+    border:1px solid #E3B3B3;
+    color:#8A2C2C;
+    border-radius:6px;
+    padding:12px 16px;
+    margin:14px auto 0;
+    font-size:13px;
+    max-width:600px;
+  }
+
   footer{
     text-align:center;
     padding:24px 16px 40px;
@@ -259,8 +296,10 @@ function renderEstimatePage(estimate, business) {
       ${estimate.proposal_date ? `<div class="row"><span class="label">Date</span><span class="value">${esc(formatDate(estimate.proposal_date))}</span></div>` : ""}
       ${estimate.current_system ? `<div class="row"><span class="label">Current System</span><span class="value">${esc(estimate.current_system)}</span></div>` : ""}
       ${estimate.technician ? `<div class="row"><span class="label">Technician</span><span class="value">${esc(estimate.technician)}</span></div>` : ""}
+      ${estimate.expires_date ? `<div class="row"><span class="label">Valid Through</span><span class="value"${expired ? ` style="color:#B33A3A"` : ""}>${esc(formatDate(estimate.expires_date))}${expired ? " (Expired)" : ""}</span></div>` : ""}
       ${estimate.diagnosis ? `<div class="diagnosis">${esc(estimate.diagnosis)}</div>` : ""}
     </div>
+    ${expired ? `<div class="expired-banner">This proposal's pricing was valid through ${esc(formatDate(estimate.expires_date))}. Please contact us to confirm current pricing.</div>` : ""}
 
     <h2 class="section-title">Your Options</h2>
     <div class="tiers-grid">
@@ -268,6 +307,16 @@ function renderEstimatePage(estimate, business) {
       ${betterCard}
       ${bestCard}
     </div>
+
+    ${estimate.scope_of_work ? `
+    <h2 class="section-title">Scope of Work</h2>
+    <div class="info-block">${multilineHtml(estimate.scope_of_work)}</div>
+    ` : ""}
+
+    ${estimate.financing_options ? `
+    <h2 class="section-title">Financing Options</h2>
+    <div class="info-block">${multilineHtml(estimate.financing_options)}</div>
+    ` : ""}
 
   </div>
 

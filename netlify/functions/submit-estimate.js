@@ -34,7 +34,7 @@ exports.handler = async (event) => {
     return respond(400, { error: "Invalid JSON body." });
   }
 
-  const { id, business_id, customer_name, site_address, proposal_date, current_system, diagnosis, technician } = body;
+  const { id, business_id, customer_name, site_address, proposal_date, current_system, diagnosis, technician, scope_of_work, financing_options, expires_date } = body;
 
   if (!business_id) {
     return respond(400, { error: "Missing business_id." });
@@ -68,6 +68,9 @@ exports.handler = async (event) => {
       current_system: current_system || null,
       diagnosis: diagnosis || null,
       technician: technician || null,
+      scope_of_work: scope_of_work || null,
+      financing_options: financing_options || null,
+      expires_date: expires_date || null,
 
       good_brand: body.good?.brand || null,
       good_seer: body.good?.seer || null,

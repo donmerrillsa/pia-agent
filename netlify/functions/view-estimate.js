@@ -249,6 +249,13 @@ function renderEstimatePage(estimate, business) {
     grid-template-columns: repeat(2, 1fr);
     gap:16px;
   }
+  .info-grid > div{
+    display:flex;
+    flex-direction:column;
+  }
+  .info-grid .info-block{
+    flex:1;
+  }
   @media (max-width: 760px){
     .info-grid{ grid-template-columns: 1fr; }
   }
@@ -302,7 +309,7 @@ function renderEstimatePage(estimate, business) {
       ${estimate.site_address ? `<div class="row"><span class="label">Site Address</span><span class="value">${esc(estimate.site_address)}</span></div>` : ""}
       ${estimate.proposal_date ? `<div class="row"><span class="label">Date</span><span class="value">${esc(formatDate(estimate.proposal_date))}</span></div>` : ""}
       ${estimate.current_system ? `<div class="row"><span class="label">Current System</span><span class="value">${esc(estimate.current_system)}</span></div>` : ""}
-      ${estimate.technician ? `<div class="row"><span class="label">Technician</span><span class="value">${esc(estimate.technician)}</span></div>` : ""}
+      ${estimate.technician ? `<div class="row"><span class="label">Prepared By</span><span class="value">${esc(estimate.technician)}</span></div>` : ""}
       ${estimate.expires_date ? `<div class="row"><span class="label">Valid Through</span><span class="value"${expired ? ` style="color:#B33A3A"` : ""}>${esc(formatDate(estimate.expires_date))}${expired ? " (Expired)" : ""}</span></div>` : ""}
       ${estimate.diagnosis ? `<div class="diagnosis">${esc(estimate.diagnosis)}</div>` : ""}
     </div>

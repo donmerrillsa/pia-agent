@@ -244,6 +244,15 @@ function renderEstimatePage(estimate, business) {
   .features li{ margin-bottom:4px; }
   .tier-photo img{ width:100%; border-radius:5px; border:1px solid var(--hairline); display:block; }
 
+  .info-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:16px;
+  }
+  @media (max-width: 760px){
+    .info-grid{ grid-template-columns: 1fr; }
+  }
+
   .info-block{
     background:var(--card);
     border:1px solid var(--hairline);
@@ -252,8 +261,6 @@ function renderEstimatePage(estimate, business) {
     font-size:14px;
     line-height:1.6;
     color:var(--ink);
-    max-width:600px;
-    margin:0 auto;
   }
 
   .expired-banner{
@@ -308,14 +315,19 @@ function renderEstimatePage(estimate, business) {
       ${bestCard}
     </div>
 
-    ${estimate.scope_of_work ? `
-    <h2 class="section-title">Scope of Work</h2>
-    <div class="info-block">${multilineHtml(estimate.scope_of_work)}</div>
-    ` : ""}
-
-    ${estimate.financing_options ? `
-    <h2 class="section-title">Financing Options</h2>
-    <div class="info-block">${multilineHtml(estimate.financing_options)}</div>
+    ${(estimate.scope_of_work || estimate.financing_options) ? `
+    <div class="info-grid">
+      ${estimate.scope_of_work ? `
+      <div>
+        <h2 class="section-title">Scope of Work</h2>
+        <div class="info-block">${multilineHtml(estimate.scope_of_work)}</div>
+      </div>` : ""}
+      ${estimate.financing_options ? `
+      <div>
+        <h2 class="section-title">Financing Options</h2>
+        <div class="info-block">${multilineHtml(estimate.financing_options)}</div>
+      </div>` : ""}
+    </div>
     ` : ""}
 
   </div>

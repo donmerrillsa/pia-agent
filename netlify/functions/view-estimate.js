@@ -14,7 +14,15 @@ exports.handler = async (event) => {
     return respondHtml(405, renderMessagePage("Method Not Allowed", "This page can only be viewed, not submitted to."));
   }
 
-  const id = event.queryStringParameters && event.queryStringParameters.id;
+ let id = event.queryStringParameters && event.queryStringParameters.id;
+  if (!id) {
+    const segments = event.path.split("/").filter(Boolean);
+    const last = segments[segments.length - 1];
+    if (last && last !== "view-estimate") {
+      id = last;
+    }
+  }
+
   if (!id) {
     return respondHtml(400, renderMessagePage("Estimate Not Found", "No estimate ID was provided in this link."));
   }

@@ -3,7 +3,7 @@
 
 [[redirects]]
   from = "/estimate/*"
-  to = "/.netlify/functions/view-estimate?id=:splat"
+  to = "/.netlify/functions/view-estimate/:splat"
   status = 200
 
 [functions]

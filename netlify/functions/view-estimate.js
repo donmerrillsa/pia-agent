@@ -1,11 +1,13 @@
 // netlify/functions/view-estimate.js
 // Renders the customer-facing estimate page for a single submitted estimate.
-// This is Version 1: one single responsive layout, same on phone or desktop —
-// no separate mobile/desktop version, no PDF. The polished 3-column
-// side-by-side version is a separate, later paid feature (Version 2).
+//
+// Layout: the three tier cards (Good/Better/Best) render in a responsive
+// grid — 3 equal columns on wider screens (laptop/desktop), automatically
+// collapsing to a single column below the breakpoint (phones). Pure CSS,
+// no JS — same HTML markup works for both.
 //
 // GET /.netlify/functions/view-estimate?id=<estimate_id>
-// (Reached via the /estimate/:id redirect defined in _redirects)
+// (Reached via the /estimate/:id redirect defined in netlify.toml)
 
 const { getSupabaseClient } = require("./_utils/supabase");
 
@@ -14,7 +16,7 @@ exports.handler = async (event) => {
     return respondHtml(405, renderMessagePage("Method Not Allowed", "This page can only be viewed, not submitted to."));
   }
 
- let id = event.queryStringParameters && event.queryStringParameters.id;
+  let id = event.queryStringParameters && event.queryStringParameters.id;
   if (!id) {
     const segments = event.path.split("/").filter(Boolean);
     const last = segments[segments.length - 1];
@@ -164,8 +166,8 @@ function renderEstimatePage(estimate, business) {
     padding:26px 20px 22px;
     border-bottom:4px solid var(--accent);
   }
-  .wrap{ max-width:600px; margin:0 auto; padding:0 16px 40px; }
-  header .wrap{ padding:0 4px; }
+  .wrap{ max-width:980px; margin:0 auto; padding:0 16px 40px; }
+  header .wrap{ padding:0 4px; max-width:600px; }
   header .eyebrow{
     font-family:'Roboto Mono',monospace;
     font-size:11px; letter-spacing:.1em; text-transform:uppercase;
@@ -180,6 +182,9 @@ function renderEstimatePage(estimate, business) {
     border-radius:6px;
     padding:18px 20px;
     margin-top:20px;
+    max-width:600px;
+    margin-left:auto;
+    margin-right:auto;
   }
   .job-info .row{ display:flex; justify-content:space-between; font-size:14px; padding:6px 0; border-bottom:1px solid var(--hairline); }
   .job-info .row:last-child{ border-bottom:none; }
@@ -196,12 +201,21 @@ function renderEstimatePage(estimate, business) {
     border-bottom:2px solid var(--accent);
   }
 
+  .tiers-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:16px;
+  }
+  @media (max-width: 760px){
+    .tiers-grid{ grid-template-columns: 1fr; }
+    .wrap{ max-width:600px; }
+  }
+
   .tier-card{
     background:var(--card);
     border:1px solid var(--hairline);
     border-radius:6px;
     padding:20px;
-    margin-bottom:16px;
   }
   .tier-label{
     font-family:'Roboto Mono',monospace;
@@ -221,6 +235,8 @@ function renderEstimatePage(estimate, business) {
     padding:24px 16px 40px;
     font-size:12.5px;
     color:var(--slate);
+    max-width:600px;
+    margin:0 auto;
   }
   footer .biz-name{ font-weight:600; color:var(--primary); margin-bottom:4px; }
 </style>
@@ -247,9 +263,11 @@ function renderEstimatePage(estimate, business) {
     </div>
 
     <h2 class="section-title">Your Options</h2>
-    ${goodCard}
-    ${betterCard}
-    ${bestCard}
+    <div class="tiers-grid">
+      ${goodCard}
+      ${betterCard}
+      ${bestCard}
+    </div>
 
   </div>
 

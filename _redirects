@@ -1,1 +1,1 @@
-/estimate/:id  /.netlify/functions/view-estimate?id=:id  200
+/estimate/*  /.netlify/functions/view-estimate?id=:splat  200

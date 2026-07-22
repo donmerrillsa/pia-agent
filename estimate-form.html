@@ -213,6 +213,7 @@
     margin:24px auto 0;
     text-align:left;
   }
+  .email-block textarea{ min-height:110px; }
   #emailStatus{ min-height:18px; }
 </style>
 </head>
@@ -395,6 +396,10 @@
         <label for="send_to_email">Email It to Customer (optional)</label>
         <input type="email" id="send_to_email" placeholder="customer@example.com">
       </div>
+      <div class="field">
+        <label for="send_message">Message</label>
+        <textarea id="send_message"></textarea>
+      </div>
       <button type="button" class="send-btn" id="emailCustomerBtn" onclick="emailCustomer()">✉️ Send Email</button>
       <p id="emailStatus"></p>
     </div>
@@ -549,6 +554,8 @@
     currentCustomerName = customerName || '';
 
     document.getElementById('linkBox').textContent = estimateUrl;
+    document.getElementById('send_message').value =
+      `Hi${customerName ? " " + customerName : ""},\n\nHere's your estimate: ${estimateUrl}\n\nLet us know if you have any questions.`;
     document.getElementById('confirmHeading').textContent = edited ? 'Estimate Updated' : 'Estimate Ready';
     document.getElementById('confirmText').textContent =
       edited
@@ -590,6 +597,7 @@
           customer_email: email,
           customer_name: currentCustomerName,
           estimate_url: currentEstimateUrl,
+          message: document.getElementById('send_message').value,
         }),
       });
       const result = await res.json();

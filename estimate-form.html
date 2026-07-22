@@ -207,10 +207,11 @@
 
   <header>
     <div class="eyebrow">Pappas Parts &amp; Service, Inc.</div>
-    <h1>New Estimate</h1>
+    <h1 id="formTitle">New Estimate</h1>
   </header>
 
   <div class="wrap" id="formWrap">
+    <input type="hidden" id="estimate_id" value="">
 
     <div class="section">
       <div class="section-head">
@@ -245,7 +246,6 @@
       </div>
     </div>
 
-    <!-- Tier template will repeat 3x: Good / Better / Best -->
     <div class="section tier-good">
       <div class="section-head">
         <span class="section-num">2</span>
@@ -370,7 +370,7 @@
 
   <div class="confirm-screen" id="confirmScreen">
     <div class="checkmark">✅</div>
-    <h2>Estimate Ready</h2>
+    <h2 id="confirmHeading">Estimate Ready</h2>
     <p id="confirmText">Choose how to send it to your customer:</p>
     <div class="send-choice">
       <a href="#" class="text-it" id="textItLink">📱 Text It</a>
@@ -385,14 +385,21 @@
 <script>
   const BUSINESS_ID = "8758d065-a6ba-48be-8685-98953b01ad6e"; // from estimate_businesses table
   const SUBMIT_ENDPOINT = "/.netlify/functions/submit-estimate";
+  const GET_ENDPOINT = "/.netlify/functions/get-estimate";
+
+  const params = new URLSearchParams(window.location.search);
+  const EDIT_ID = params.get('id');
 
   function handlePhoto(input, tier) {
     const file = input.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-      document.getElementById(tier + '_photo_img').src = e.target.result;
+      const img = document.getElementById(tier + '_photo_img');
+      img.src = e.target.result;
+      delete img.dataset.existingUrl; // a fresh photo replaces any existing one
       document.getElementById(tier + '_photo_preview').classList.add('has-image');
+      document.getElementById(tier + '_photo_confirm').textContent = '✓ Photo added';
       document.getElementById(tier + '_photo_confirm').classList.add('show');
     };
     reader.readAsDataURL(file);
@@ -404,6 +411,7 @@
   }
 
   function buildTierPayload(tier) {
+    const img = document.getElementById(tier + '_photo_img');
     return {
       brand: document.getElementById(tier + '_brand').value,
       seer: document.getElementById(tier + '_seer').value,
@@ -411,7 +419,53 @@
       warranty: document.getElementById(tier + '_warranty').value,
       features: document.getElementById(tier + '_features').value,
       photo_data_url: getPhotoDataUrl(tier),
+      existing_photo_url: (img && img.dataset.existingUrl) || null,
     };
+  }
+
+  function setExistingPhoto(tier, url) {
+    if (!url) return;
+    const img = document.getElementById(tier + '_photo_img');
+    img.src = url;
+    img.dataset.existingUrl = url;
+    document.getElementById(tier + '_photo_preview').classList.add('has-image');
+    const confirmEl = document.getElementById(tier + '_photo_confirm');
+    confirmEl.textContent = '✓ Current photo (tap Add a Photo to replace)';
+    confirmEl.classList.add('show');
+  }
+
+  async function loadForEdit() {
+    document.getElementById('estimate_id').value = EDIT_ID;
+    document.getElementById('formTitle').textContent = 'Edit Estimate';
+    document.getElementById('sendBtn').textContent = 'Save Changes';
+    document.title = 'Edit Estimate — Pappas Parts & Service';
+
+    try {
+      const res = await fetch(`${GET_ENDPOINT}?id=${encodeURIComponent(EDIT_ID)}`);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Could not load this estimate.');
+      }
+      const e = result.estimate;
+
+      document.getElementById('customer_name').value = e.customer_name || '';
+      document.getElementById('site_address').value = e.site_address || '';
+      if (e.proposal_date) document.getElementById('proposal_date').value = e.proposal_date;
+      document.getElementById('current_system').value = e.current_system || '';
+      document.getElementById('diagnosis').value = e.diagnosis || '';
+      document.getElementById('technician').value = e.technician || '';
+
+      for (const tier of ['good', 'better', 'best']) {
+        document.getElementById(tier + '_brand').value = e[tier + '_brand'] || '';
+        document.getElementById(tier + '_seer').value = e[tier + '_seer'] || '';
+        document.getElementById(tier + '_price').value = e[tier + '_price'] || '';
+        document.getElementById(tier + '_warranty').value = e[tier + '_warranty'] || '';
+        document.getElementById(tier + '_features').value = e[tier + '_features'] || '';
+        setExistingPhoto(tier, e[tier + '_photo_url']);
+      }
+    } catch (err) {
+      alert('Could not load this estimate for editing: ' + err.message);
+    }
   }
 
   async function handleSend() {
@@ -424,7 +478,7 @@
 
     const btn = document.getElementById('sendBtn');
     btn.disabled = true;
-    btn.textContent = 'Sending…';
+    btn.textContent = EDIT_ID ? 'Saving…' : 'Sending…';
 
     const payload = {
       business_id: BUSINESS_ID,
@@ -438,6 +492,7 @@
       better: buildTierPayload('better'),
       best: buildTierPayload('best'),
     };
+    if (EDIT_ID) payload.id = EDIT_ID;
 
     try {
       const res = await fetch(SUBMIT_ENDPOINT, {
@@ -451,16 +506,16 @@
         throw new Error(result.message || result.error || 'Something went wrong.');
       }
 
-      showConfirmation(result.estimate_url, payload.customer_name);
+      showConfirmation(result.estimate_url, payload.customer_name, result.edited);
 
     } catch (err) {
-      alert('Could not send this estimate: ' + err.message + '\n\nPlease check your connection and try again.');
+      alert('Could not save this estimate: ' + err.message + '\n\nPlease check your connection and try again.');
       btn.disabled = false;
-      btn.textContent = 'Send Estimate';
+      btn.textContent = EDIT_ID ? 'Save Changes' : 'Send Estimate';
     }
   }
 
-  function showConfirmation(estimateUrl, customerName) {
+  function showConfirmation(estimateUrl, customerName, edited) {
     document.getElementById('formWrap').style.display = 'none';
     document.getElementById('sendBar').style.display = 'none';
 
@@ -470,14 +525,22 @@
 
     document.getElementById('textItLink').href = `sms:?&body=${smsBody}`;
     document.getElementById('emailItLink').href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+
+    document.getElementById('confirmHeading').textContent = edited ? 'Estimate Updated' : 'Estimate Ready';
     document.getElementById('confirmText').textContent =
-      customerName ? `Estimate for ${customerName} is ready. Choose how to send it:` : 'Choose how to send it to your customer:';
+      (edited
+        ? (customerName ? `The estimate for ${customerName} has been updated. ` : 'This estimate has been updated. ')
+        : (customerName ? `Estimate for ${customerName} is ready. ` : 'Estimate is ready. '))
+      + 'Choose how to send it:';
 
     document.getElementById('confirmScreen').classList.add('show');
   }
 
-  // Default the date field to today
+  // Default the date field to today, then load existing data if editing
   document.getElementById('proposal_date').valueAsDate = new Date();
+  if (EDIT_ID) {
+    loadForEdit();
+  }
 </script>
 
 </body>

@@ -5,9 +5,10 @@
 //
 // POST /.netlify/functions/submit-estimate
 // Body: {
+//   id (optional — present when editing an existing estimate),
 //   business_id, customer_name, site_address, proposal_date,
 //   current_system, diagnosis, technician,
-//   good: { brand, seer, price, warranty, features, photo_data_url },
+//   good: { brand, seer, price, warranty, features, photo_data_url, existing_photo_url },
 //   better: { ...same },
 //   best:   { ...same }
 // }
@@ -26,26 +27,32 @@ exports.handler = async (event) => {
     return respond(400, { error: "Invalid JSON body." });
   }
 
-  const { business_id, customer_name, site_address, proposal_date, current_system, diagnosis, technician } = body;
+  const { id, business_id, customer_name, site_address, proposal_date, current_system, diagnosis, technician } = body;
 
   if (!business_id) {
     return respond(400, { error: "Missing business_id." });
   }
 
-  console.log(`[submit-estimate] New submission for business ${business_id}`);
+  const isEdit = Boolean(id);
+  console.log(`[submit-estimate] ${isEdit ? `Editing estimate ${id}` : "New submission"} for business ${business_id}`);
   const supabase = getSupabaseClient();
 
   try {
-    // ── Step 1: Upload any photos, tier by tier ─────────────────
+    // ── Step 1: Upload any new photos, tier by tier ─────────────
+    // If a new photo was chosen, upload it. Otherwise, keep whatever
+    // photo URL the form already had on file for that tier (used when
+    // editing an estimate and the tech doesn't touch the photo).
     const photoUrls = {};
     for (const tier of ["good", "better", "best"]) {
       const tierData = body[tier] || {};
       if (tierData.photo_data_url) {
         photoUrls[tier] = await uploadPhoto(supabase, business_id, tier, tierData.photo_data_url);
+      } else if (tierData.existing_photo_url) {
+        photoUrls[tier] = tierData.existing_photo_url;
       }
     }
 
-    // ── Step 2: Build and insert the estimate row ───────────────
+    // ── Step 2: Build the estimate row ───────────────────────────
     const row = {
       business_id,
       customer_name: customer_name || null,
@@ -77,26 +84,43 @@ exports.handler = async (event) => {
       best_photo_url: photoUrls.best || null,
     };
 
-    const { data, error } = await supabase
-      .from("estimates")
-      .insert(row)
-      .select("id")
-      .single();
+    // ── Step 3: Insert (new estimate) or update (editing one) ────
+    let estimateId;
+    if (isEdit) {
+      const { data, error } = await supabase
+        .from("estimates")
+        .update(row)
+        .eq("id", id)
+        .select("id")
+        .single();
 
-    if (error) {
-      throw new Error(`Failed to save estimate: ${error.message}`);
+      if (error) {
+        throw new Error(`Failed to update estimate: ${error.message}`);
+      }
+      estimateId = data.id;
+      console.log(`[submit-estimate] Updated estimate ${estimateId}`);
+    } else {
+      const { data, error } = await supabase
+        .from("estimates")
+        .insert(row)
+        .select("id")
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to save estimate: ${error.message}`);
+      }
+      estimateId = data.id;
+      console.log(`[submit-estimate] Saved estimate ${estimateId}`);
     }
 
-    const estimateId = data.id;
     const baseUrl = process.env.SITE_URL || "https://your-site.netlify.app";
     const estimateUrl = `${baseUrl}/estimate/${estimateId}`;
-
-    console.log(`[submit-estimate] Saved estimate ${estimateId}`);
 
     return respond(200, {
       success: true,
       estimate_id: estimateId,
       estimate_url: estimateUrl,
+      edited: isEdit,
     });
 
   } catch (err) {

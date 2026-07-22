@@ -3,6 +3,11 @@
 // to Supabase Storage, saves the estimate to the estimates table, and
 // returns a unique link the tech can send to the customer.
 //
+// Also automatically emails the business owner (e.g. Pappas) a copy of
+// every save — new estimate or edit — via Resend, so their own record
+// (see the HVAC Estimates folder instructions) is always accurate
+// without depending on anyone remembering to forward anything.
+//
 // POST /.netlify/functions/submit-estimate
 // Body: {
 //   id (optional — present when editing an existing estimate),
@@ -14,6 +19,8 @@
 // }
 
 const { getSupabaseClient } = require("./_utils/supabase");
+
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -115,6 +122,13 @@ exports.handler = async (event) => {
 
     const baseUrl = process.env.SITE_URL || "https://your-site.netlify.app";
     const estimateUrl = `${baseUrl}/estimate/${estimateId}`;
+    const editUrl = `${baseUrl}/estimate-form.html?id=${estimateId}`;
+
+    // ── Step 4: Notify the business owner (non-blocking) ─────────
+    // A failure here should never fail the save itself — the estimate
+    // is already safely stored either way.
+    notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, customer_name, isEdit)
+      .catch((err) => console.error("[submit-estimate] Owner notification failed:", err.message));
 
     return respond(200, {
       success: true,
@@ -132,6 +146,58 @@ exports.handler = async (event) => {
     });
   }
 };
+
+/**
+ * Emails the business's on-file notification_email (if any) a copy of
+ * every estimate save, with both the customer view link and the
+ * private edit link. Silently does nothing if no notification_email
+ * is configured or RESEND_API_KEY is missing — this is a convenience
+ * feature, not required for the core save to succeed.
+ */
+async function notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, customerName, isEdit) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    console.warn("[submit-estimate] RESEND_API_KEY not configured — skipping owner notification.");
+    return;
+  }
+
+  const { data: business, error } = await supabase
+    .from("estimate_businesses")
+    .select("business_name, notification_email")
+    .eq("id", business_id)
+    .single();
+
+  if (error || !business || !business.notification_email) {
+    return; // no notification email on file — nothing to send
+  }
+
+  const fromEmail = process.env.ESTIMATE_FROM_EMAIL || process.env.REPORT_FROM_EMAIL || "pia@buy-mos.com";
+  const subject = `${isEdit ? "Updated" : "New"} Estimate${customerName ? " — " + customerName : ""}`;
+  const html = `
+    <p>${isEdit ? "An estimate was updated" : "A new estimate was created"}${customerName ? ` for ${escapeHtml(customerName)}` : ""}.</p>
+    <p><strong>View it (what the customer sees):</strong><br><a href="${estimateUrl}">${estimateUrl}</a></p>
+    <p><strong>Edit this estimate:</strong><br><a href="${editUrl}">${editUrl}</a></p>
+  `;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${resendKey}`,
+    },
+    body: JSON.stringify({
+      from: `${business.business_name || "Estimate Tool"} <${fromEmail}>`,
+      to: [business.notification_email],
+      subject,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Resend API failed [${res.status}]: ${errBody}`);
+  }
+}
 
 /**
  * Decodes a base64 data URL (from the browser's FileReader) and
@@ -158,6 +224,14 @@ async function uploadPhoto(supabase, business_id, tier, dataUrl) {
 
   const { data: urlData } = supabase.storage.from("estimate-photos").getPublicUrl(path);
   return urlData.publicUrl;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function respond(statusCode, body) {

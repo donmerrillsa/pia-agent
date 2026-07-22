@@ -16,6 +16,7 @@
     --hairline:#DCE7ED;
     --ink:#1A1A1A;
     --good:#2F6F4E;
+    --bad:#B33A3A;
   }
   *{box-sizing:border-box;}
   body{
@@ -91,7 +92,7 @@
     color:var(--slate);
     margin-bottom:6px;
   }
-  input[type="text"], input[type="date"], textarea{
+  input[type="text"], input[type="date"], input[type="email"], textarea{
     width:100%;
     padding:14px;
     font-size:16px;
@@ -176,7 +177,14 @@
     cursor:pointer;
   }
   .send-btn:active{ background:#e07e00; }
-  .send-btn[disabled]{ background:var(--hairline); color:var(--slate); cursor:not-allowed; }.confirm-screen{
+  .send-btn[disabled]{ background:var(--hairline); color:var(--slate); cursor:not-allowed; }
+  .secondary-btn{
+    background:var(--navy);
+    color:#fff;
+  }
+  .secondary-btn:active{ background:#0d1e2d; }
+
+  .confirm-screen{
     display:none;
     text-align:center;
     padding:30px 20px;
@@ -184,23 +192,28 @@
   .confirm-screen.show{ display:block; }
   .confirm-screen .checkmark{ font-size:48px; margin-bottom:12px; }
   .confirm-screen h2{ font-family:'Zilla Slab',serif; color:var(--navy); margin:0 0 8px; }
-  .send-choice{
-    display:flex;
-    gap:12px;
-    margin-top:20px;
-  }
-  .send-choice a{
-    flex:1;
-    display:block;
-    text-align:center;
-    padding:14px;
+  .link-box{
+    background:var(--card);
+    border:1.5px solid var(--hairline);
     border-radius:6px;
-    font-weight:700;
-    text-decoration:none;
-    font-family:'Inter',sans-serif;
+    padding:14px;
+    margin:16px auto;
+    max-width:480px;
+    font-family:'Roboto Mono',monospace;
+    font-size:13px;
+    color:var(--navy);
+    word-break:break-all;
   }
-  .send-choice .text-it{ background:var(--navy); color:#fff; }
-  .send-choice .email-it{ background:var(--orange); color:var(--navy); }
+  .confirm-actions{
+    max-width:480px;
+    margin:0 auto;
+  }
+  .email-block{
+    max-width:480px;
+    margin:24px auto 0;
+    text-align:left;
+  }
+  #emailStatus{ min-height:18px; }
 </style>
 </head>
 <body>
@@ -371,10 +384,19 @@
   <div class="confirm-screen" id="confirmScreen">
     <div class="checkmark">✅</div>
     <h2 id="confirmHeading">Estimate Ready</h2>
-    <p id="confirmText">Choose how to send it to your customer:</p>
-    <div class="send-choice">
-      <a href="#" class="text-it" id="textItLink">📱 Text It</a>
-      <a href="#" class="email-it" id="emailItLink">✉️ Email It</a>
+    <p id="confirmText">Here's the link for this estimate:</p>
+    <div class="link-box" id="linkBox"></div>
+    <div class="confirm-actions">
+      <button type="button" class="send-btn secondary-btn" id="copyLinkBtn" onclick="copyLink()">🔗 Copy Link</button>
+    </div>
+
+    <div class="email-block">
+      <div class="field">
+        <label for="send_to_email">Email It to Customer (optional)</label>
+        <input type="email" id="send_to_email" placeholder="customer@example.com">
+      </div>
+      <button type="button" class="send-btn" id="emailCustomerBtn" onclick="emailCustomer()">✉️ Send Email</button>
+      <p id="emailStatus"></p>
     </div>
   </div>
 
@@ -386,9 +408,13 @@
   const BUSINESS_ID = "8758d065-a6ba-48be-8685-98953b01ad6e"; // from estimate_businesses table
   const SUBMIT_ENDPOINT = "/.netlify/functions/submit-estimate";
   const GET_ENDPOINT = "/.netlify/functions/get-estimate";
+  const EMAIL_ENDPOINT = "/.netlify/functions/send-estimate-email";
 
   const params = new URLSearchParams(window.location.search);
   const EDIT_ID = params.get('id');
+
+  let currentEstimateUrl = "";
+  let currentCustomerName = "";
 
   function handlePhoto(input, tier) {
     const file = input.files[0];
@@ -519,21 +545,66 @@
     document.getElementById('formWrap').style.display = 'none';
     document.getElementById('sendBar').style.display = 'none';
 
-    const smsBody = encodeURIComponent(`Hi! Here's your HVAC estimate: ${estimateUrl}`);
-    const emailSubject = encodeURIComponent('Your HVAC Replacement Estimate');
-    const emailBody = encodeURIComponent(`Hi,\n\nHere's your estimate: ${estimateUrl}\n\nLet us know if you have any questions.`);
+    currentEstimateUrl = estimateUrl;
+    currentCustomerName = customerName || '';
 
-    document.getElementById('textItLink').href = `sms:?&body=${smsBody}`;
-    document.getElementById('emailItLink').href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
-
+    document.getElementById('linkBox').textContent = estimateUrl;
     document.getElementById('confirmHeading').textContent = edited ? 'Estimate Updated' : 'Estimate Ready';
     document.getElementById('confirmText').textContent =
-      (edited
-        ? (customerName ? `The estimate for ${customerName} has been updated. ` : 'This estimate has been updated. ')
-        : (customerName ? `Estimate for ${customerName} is ready. ` : 'Estimate is ready. '))
-      + 'Choose how to send it:';
+      edited
+        ? (customerName ? `The estimate for ${customerName} has been updated.` : 'This estimate has been updated.')
+        : (customerName ? `Estimate for ${customerName} is ready.` : 'Estimate is ready.');
 
     document.getElementById('confirmScreen').classList.add('show');
+  }
+
+  function copyLink() {
+    const btn = document.getElementById('copyLinkBtn');
+    const original = btn.textContent;
+    navigator.clipboard.writeText(currentEstimateUrl).then(() => {
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = original; }, 2000);
+    }).catch(() => {
+      alert('Could not copy automatically. Here is the link:\n\n' + currentEstimateUrl);
+    });
+  }
+
+  async function emailCustomer() {
+    const email = document.getElementById('send_to_email').value.trim();
+    if (!email) {
+      alert("Please enter the customer's email address first.");
+      return;
+    }
+    const btn = document.getElementById('emailCustomerBtn');
+    const statusEl = document.getElementById('emailStatus');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    try {
+      const res = await fetch(EMAIL_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: BUSINESS_ID,
+          customer_email: email,
+          customer_name: currentCustomerName,
+          estimate_url: currentEstimateUrl,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || result.error || 'Something went wrong.');
+      }
+      statusEl.textContent = `✓ Sent to ${email}`;
+      statusEl.style.color = 'var(--good)';
+    } catch (err) {
+      statusEl.textContent = `Could not send: ${err.message}`;
+      statusEl.style.color = 'var(--bad)';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✉️ Send Email';
+    }
   }
 
   // Default the date field to today, then load existing data if editing

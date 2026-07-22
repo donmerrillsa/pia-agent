@@ -1,15 +1,18 @@
 [build]
   functions = "netlify/functions"
 
+[[redirects]]
+  from = "/estimate/:id"
+  to = "/.netlify/functions/view-estimate?id=:id"
+  status = 200
+
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
-
 # ── Scheduled function — Weekly Pipeline Integrity Report ────
 # Runs every Friday at 12:00 PM UTC = 7:00 AM CDT
 [functions."scheduled-pipeline"]
   schedule = "0 12 * * 5"
-
 # ── Scheduled function — Daily Pipeline Pulse ────────────────
 # Runs Monday–Thursday at 12:00 PM UTC = 7:00 AM CDT
 # No Pulse on Friday — CSO receives the full weekly report instead

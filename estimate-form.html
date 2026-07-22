@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Estimate — Pappas Parts &amp; Service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#12283C;
+    --orange:#FE8D00;
+    --slate:#4C6478;
+    --paper:#EAF3F7;
+    --card:#FFFFFF;
+    --hairline:#DCE7ED;
+    --ink:#1A1A1A;
+    --good:#2F6F4E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:80px;
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:20px 20px 18px;
+    border-bottom:4px solid var(--orange);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  header .eyebrow{
+    font-family:'Roboto Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--orange);
+    margin-bottom:4px;
+  }
+  header h1{
+    font-family:'Zilla Slab',serif;
+    font-size:22px;
+    margin:0;
+  }
+
+  .wrap{ max-width:640px; margin:0 auto; padding:20px 16px; }
+
+  .section{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    margin-bottom:20px;
+    overflow:hidden;
+  }
+  .section-head{
+    padding:16px 18px;
+    border-bottom:1px solid var(--hairline);
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .section-num{
+    font-family:'Roboto Mono',monospace;
+    font-size:12px;
+    color:var(--orange);
+    font-weight:600;
+  }
+  .section-head h2{
+    font-family:'Zilla Slab',serif;
+    font-size:18px;
+    margin:0;
+    color:var(--navy);
+  }
+  .section-body{ padding:18px; }
+  .section.tier-good .section-head{ border-left:4px solid var(--hairline); }
+  .section.tier-better .section-head{ border-left:4px solid var(--slate); }
+  .section.tier-best .section-head{ border-left:4px solid var(--orange); }
+
+  .field{ margin-bottom:18px; }
+  .field:last-child{ margin-bottom:0; }
+  label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    color:var(--slate);
+    margin-bottom:6px;
+  }
+  input[type="text"], input[type="date"], textarea{
+    width:100%;
+    padding:14px;
+    font-size:16px;
+    font-family:'Inter',sans-serif;
+    border:1.5px solid var(--hairline);
+    border-radius:5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input:focus, textarea:focus{
+    outline:none;
+    border-color:var(--orange);
+  }
+  textarea{ min-height:90px; resize:vertical; }
+
+  .photo-field{
+    border:1.5px dashed var(--hairline);
+    border-radius:6px;
+    padding:16px;
+    text-align:center;
+    background:var(--paper);
+  }
+  .photo-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    padding:14px 22px;
+    border-radius:5px;
+    font-size:15px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .photo-btn:active{ background:#0d1e2d; }
+  input[type="file"]{ display:none; }
+  .photo-preview{
+    margin-top:14px;
+    display:none;
+  }
+  .photo-preview.has-image{ display:block; }
+  .photo-preview img{
+    max-width:100%;
+    max-height:220px;
+    border-radius:5px;
+    border:1px solid var(--hairline);
+  }
+  .photo-confirm{
+    margin-top:8px;
+    font-size:13px;
+    color:var(--good);
+    font-weight:600;
+    display:none;
+    align-items:center;
+    gap:6px;
+  }
+  .photo-confirm.show{ display:flex; justify-content:center; }
+
+  .send-bar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:#fff;
+    border-top:1px solid var(--hairline);
+    padding:14px 16px;
+    box-shadow:0 -2px 10px rgba(0,0,0,.06);
+  }
+  .send-btn{
+    max-width:640px;
+    margin:0 auto;
+    display:block;
+    width:100%;
+    background:var(--orange);
+    color:var(--navy);
+    border:none;
+    padding:16px;
+    border-radius:6px;
+    font-size:17px;
+    font-weight:700;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .send-btn:active{ background:#e07e00; }
+  .send-btn[disabled]{ background:var(--hairline); color:var(--slate); cursor:not-allowed; }.confirm-screen{
+    display:none;
+    text-align:center;
+    padding:30px 20px;
+  }
+  .confirm-screen.show{ display:block; }
+  .confirm-screen .checkmark{ font-size:48px; margin-bottom:12px; }
+  .confirm-screen h2{ font-family:'Zilla Slab',serif; color:var(--navy); margin:0 0 8px; }
+  .send-choice{
+    display:flex;
+    gap:12px;
+    margin-top:20px;
+  }
+  .send-choice a{
+    flex:1;
+    display:block;
+    text-align:center;
+    padding:14px;
+    border-radius:6px;
+    font-weight:700;
+    text-decoration:none;
+    font-family:'Inter',sans-serif;
+  }
+  .send-choice .text-it{ background:var(--navy); color:#fff; }
+  .send-choice .email-it{ background:var(--orange); color:var(--navy); }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="eyebrow">Pappas Parts &amp; Service, Inc.</div>
+    <h1>New Estimate</h1>
+  </header>
+
+  <div class="wrap" id="formWrap">
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">1</span>
+        <h2>Job Details</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="customer_name">Customer Name</label>
+          <input type="text" id="customer_name" name="customer_name" required>
+        </div>
+        <div class="field">
+          <label for="site_address">Site Address</label>
+          <input type="text" id="site_address" name="site_address" required>
+        </div>
+        <div class="field">
+          <label for="proposal_date">Date</label>
+          <input type="date" id="proposal_date" name="proposal_date">
+        </div>
+        <div class="field">
+          <label for="current_system">Current System</label>
+          <input type="text" id="current_system" name="current_system" placeholder="e.g. 5-ton rooftop package unit, 16 yrs">
+        </div>
+        <div class="field">
+          <label for="diagnosis">Diagnosis</label>
+          <textarea id="diagnosis" name="diagnosis"></textarea>
+        </div>
+        <div class="field">
+          <label for="technician">Technician</label>
+          <input type="text" id="technician" name="technician">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tier template will repeat 3x: Good / Better / Best -->
+    <div class="section tier-good">
+      <div class="section-head">
+        <span class="section-num">2</span>
+        <h2>Good Option</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="good_brand">Brand / Model</label>
+          <input type="text" id="good_brand" name="good_brand">
+        </div>
+        <div class="field">
+          <label for="good_seer">SEER2 Rating</label>
+          <input type="text" id="good_seer" name="good_seer">
+        </div>
+        <div class="field">
+          <label for="good_price">Price (installed)</label>
+          <input type="text" id="good_price" name="good_price" placeholder="$">
+        </div>
+        <div class="field">
+          <label for="good_warranty">Warranty Terms</label>
+          <input type="text" id="good_warranty" name="good_warranty">
+        </div>
+        <div class="field">
+          <label for="good_features">Key Features</label>
+          <textarea id="good_features" name="good_features" placeholder="One per line"></textarea>
+        </div>
+        <div class="field">
+          <label>Photo of This Unit</label>
+          <div class="photo-field">
+            <button type="button" class="photo-btn" onclick="document.getElementById('good_photo').click()">
+              📷 Add a Photo
+            </button>
+            <input type="file" id="good_photo" name="good_photo" accept="image/*" capture="environment" onchange="handlePhoto(this, 'good')">
+            <div class="photo-preview" id="good_photo_preview"><img id="good_photo_img" src="" alt=""></div>
+            <div class="photo-confirm" id="good_photo_confirm">✓ Photo added</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section tier-better">
+      <div class="section-head">
+        <span class="section-num">3</span>
+        <h2>Better Option</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="better_brand">Brand / Model</label>
+          <input type="text" id="better_brand" name="better_brand">
+        </div>
+        <div class="field">
+          <label for="better_seer">SEER2 Rating</label>
+          <input type="text" id="better_seer" name="better_seer">
+        </div>
+        <div class="field">
+          <label for="better_price">Price (installed)</label>
+          <input type="text" id="better_price" name="better_price" placeholder="$">
+        </div>
+        <div class="field">
+          <label for="better_warranty">Warranty Terms</label>
+          <input type="text" id="better_warranty" name="better_warranty">
+        </div>
+        <div class="field">
+          <label for="better_features">Key Features</label>
+          <textarea id="better_features" name="better_features" placeholder="One per line"></textarea>
+        </div>
+        <div class="field">
+          <label>Photo of This Unit</label>
+          <div class="photo-field">
+            <button type="button" class="photo-btn" onclick="document.getElementById('better_photo').click()">
+              📷 Add a Photo
+            </button>
+            <input type="file" id="better_photo" name="better_photo" accept="image/*" capture="environment" onchange="handlePhoto(this, 'better')">
+            <div class="photo-preview" id="better_photo_preview"><img id="better_photo_img" src="" alt=""></div>
+            <div class="photo-confirm" id="better_photo_confirm">✓ Photo added</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section tier-best">
+      <div class="section-head">
+        <span class="section-num">4</span>
+        <h2>Best Option</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="best_brand">Brand / Model</label>
+          <input type="text" id="best_brand" name="best_brand">
+        </div>
+        <div class="field">
+          <label for="best_seer">SEER2 Rating</label>
+          <input type="text" id="best_seer" name="best_seer">
+        </div>
+        <div class="field">
+          <label for="best_price">Price (installed)</label>
+          <input type="text" id="best_price" name="best_price" placeholder="$">
+        </div>
+        <div class="field">
+          <label for="best_warranty">Warranty Terms</label>
+          <input type="text" id="best_warranty" name="best_warranty">
+        </div>
+        <div class="field">
+          <label for="best_features">Key Features</label>
+          <textarea id="best_features" name="best_features" placeholder="One per line"></textarea>
+        </div>
+        <div class="field">
+          <label>Photo of This Unit</label>
+          <div class="photo-field">
+            <button type="button" class="photo-btn" onclick="document.getElementById('best_photo').click()">
+              📷 Add a Photo
+            </button>
+            <input type="file" id="best_photo" name="best_photo" accept="image/*" capture="environment" onchange="handlePhoto(this, 'best')">
+            <div class="photo-preview" id="best_photo_preview"><img id="best_photo_img" src="" alt=""></div>
+            <div class="photo-confirm" id="best_photo_confirm">✓ Photo added</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /formWrap -->
+
+  <div class="confirm-screen" id="confirmScreen">
+    <div class="checkmark">✅</div>
+    <h2>Estimate Ready</h2>
+    <p id="confirmText">Choose how to send it to your customer:</p>
+    <div class="send-choice">
+      <a href="#" class="text-it" id="textItLink">📱 Text It</a>
+      <a href="#" class="email-it" id="emailItLink">✉️ Email It</a>
+    </div>
+  </div>
+
+  <div class="send-bar" id="sendBar">
+    <button type="button" class="send-btn" id="sendBtn" onclick="handleSend()">Send Estimate</button>
+  </div>
+
+<script>
+  const BUSINESS_ID = "8758d065-a6ba-48be-8685-98953b01ad6e"; // from estimate_businesses table
+  const SUBMIT_ENDPOINT = "/.netlify/functions/submit-estimate";
+
+  function handlePhoto(input, tier) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById(tier + '_photo_img').src = e.target.result;
+      document.getElementById(tier + '_photo_preview').classList.add('has-image');
+      document.getElementById(tier + '_photo_confirm').classList.add('show');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function getPhotoDataUrl(tier) {
+    const img = document.getElementById(tier + '_photo_img');
+    return img && img.src && img.src.startsWith('data:image') ? img.src : null;
+  }
+
+  function buildTierPayload(tier) {
+    return {
+      brand: document.getElementById(tier + '_brand').value,
+      seer: document.getElementById(tier + '_seer').value,
+      price: document.getElementById(tier + '_price').value,
+      warranty: document.getElementById(tier + '_warranty').value,
+      features: document.getElementById(tier + '_features').value,
+      photo_data_url: getPhotoDataUrl(tier),
+    };
+  }
+
+  async function handleSend() {
+    const requiredOk = document.getElementById('customer_name').value.trim() &&
+                        document.getElementById('site_address').value.trim();
+    if (!requiredOk) {
+      alert('Please fill in at least the customer name and site address before sending.');
+      return;
+    }
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    const payload = {
+      business_id: BUSINESS_ID,
+      customer_name: document.getElementById('customer_name').value,
+      site_address: document.getElementById('site_address').value,
+      proposal_date: document.getElementById('proposal_date').value,
+      current_system: document.getElementById('current_system').value,
+      diagnosis: document.getElementById('diagnosis').value,
+      technician: document.getElementById('technician').value,
+      good: buildTierPayload('good'),
+      better: buildTierPayload('better'),
+      best: buildTierPayload('best'),
+    };
+
+    try {
+      const res = await fetch(SUBMIT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || result.error || 'Something went wrong.');
+      }
+
+      showConfirmation(result.estimate_url, payload.customer_name);
+
+    } catch (err) {
+      alert('Could not send this estimate: ' + err.message + '\n\nPlease check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Send Estimate';
+    }
+  }
+
+  function showConfirmation(estimateUrl, customerName) {
+    document.getElementById('formWrap').style.display = 'none';
+    document.getElementById('sendBar').style.display = 'none';
+
+    const smsBody = encodeURIComponent(`Hi! Here's your HVAC estimate: ${estimateUrl}`);
+    const emailSubject = encodeURIComponent('Your HVAC Replacement Estimate');
+    const emailBody = encodeURIComponent(`Hi,\n\nHere's your estimate: ${estimateUrl}\n\nLet us know if you have any questions.`);
+
+    document.getElementById('textItLink').href = `sms:?&body=${smsBody}`;
+    document.getElementById('emailItLink').href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+    document.getElementById('confirmText').textContent =
+      customerName ? `Estimate for ${customerName} is ready. Choose how to send it:` : 'Choose how to send it to your customer:';
+
+    document.getElementById('confirmScreen').classList.add('show');
+  }
+
+  // Default the date field to today
+  document.getElementById('proposal_date').valueAsDate = new Date();
+</script>
+
+</body>
+</html>

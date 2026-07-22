@@ -2,8 +2,8 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/estimate/:id"
-  to = "/.netlify/functions/view-estimate?id=:id"
+  from = "/estimate/*"
+  to = "/.netlify/functions/view-estimate?id=:splat"
   status = 200
 
 [functions]

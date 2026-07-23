@@ -304,7 +304,7 @@
             <button type="button" class="photo-btn" onclick="document.getElementById('good_photo').click()">
               📷 Add a Photo
             </button>
-            <input type="file" id="good_photo" name="good_photo" accept="image/*" capture="environment" onchange="handlePhoto(this, 'good')">
+            <input type="file" id="good_photo" name="good_photo" accept="image/*" onchange="handlePhoto(this, 'good')">
             <div class="photo-preview" id="good_photo_preview"><img id="good_photo_img" src="" alt=""></div>
             <div class="photo-confirm" id="good_photo_confirm">✓ Photo added</div>
           </div>
@@ -344,7 +344,7 @@
             <button type="button" class="photo-btn" onclick="document.getElementById('better_photo').click()">
               📷 Add a Photo
             </button>
-            <input type="file" id="better_photo" name="better_photo" accept="image/*" capture="environment" onchange="handlePhoto(this, 'better')">
+            <input type="file" id="better_photo" name="better_photo" accept="image/*" onchange="handlePhoto(this, 'better')">
             <div class="photo-preview" id="better_photo_preview"><img id="better_photo_img" src="" alt=""></div>
             <div class="photo-confirm" id="better_photo_confirm">✓ Photo added</div>
           </div>
@@ -384,7 +384,7 @@
             <button type="button" class="photo-btn" onclick="document.getElementById('best_photo').click()">
               📷 Add a Photo
             </button>
-            <input type="file" id="best_photo" name="best_photo" accept="image/*" capture="environment" onchange="handlePhoto(this, 'best')">
+            <input type="file" id="best_photo" name="best_photo" accept="image/*" onchange="handlePhoto(this, 'best')">
             <div class="photo-preview" id="best_photo_preview"><img id="best_photo_img" src="" alt=""></div>
             <div class="photo-confirm" id="best_photo_confirm">✓ Photo added</div>
           </div>
@@ -427,6 +427,60 @@
   const GET_ENDPOINT = "/.netlify/functions/get-estimate";
   const EMAIL_ENDPOINT = "/.netlify/functions/send-estimate-email";
 
+  const DRAFT_KEY = 'pia_estimate_draft';
+  const TEXT_FIELD_IDS = [
+    'customer_name', 'site_address', 'proposal_date', 'current_system', 'diagnosis', 'technician',
+    'scope_of_work', 'financing_options', 'expires_date',
+    'good_brand', 'good_seer', 'good_price', 'good_warranty', 'good_features',
+    'better_brand', 'better_seer', 'better_price', 'better_warranty', 'better_features',
+    'best_brand', 'best_seer', 'best_price', 'best_warranty', 'best_features',
+  ];
+
+  // Saves everything you've typed (not photos — those are too large to
+  // safely store this way) so that if the browser reloads this tab after
+  // you've switched to another app, your progress isn't lost.
+  function saveDraft() {
+    const draft = {};
+    TEXT_FIELD_IDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) draft[id] = el.value;
+    });
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) { /* storage full or unavailable — fail silently, not critical */ }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+
+  function offerDraftRestore() {
+    let saved;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      saved = JSON.parse(raw);
+    } catch (e) { return; }
+
+    const hasContent = Object.values(saved).some((v) => v && v.trim());
+    if (!hasContent) return;
+
+    if (confirm('It looks like you have an unsaved estimate from earlier. Restore it? (Any photos will need to be added again.)')) {
+      TEXT_FIELD_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && saved[id]) el.value = saved[id];
+      });
+    } else {
+      clearDraft();
+    }
+  }
+
+  let draftSaveTimer = null;
+  document.getElementById('formWrap').addEventListener('input', function() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraft, 500);
+  });
+
   const params = new URLSearchParams(window.location.search);
   const EDIT_ID = params.get('id');
 
@@ -438,14 +492,39 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-      const img = document.getElementById(tier + '_photo_img');
-      img.src = e.target.result;
-      delete img.dataset.existingUrl; // a fresh photo replaces any existing one
-      document.getElementById(tier + '_photo_preview').classList.add('has-image');
-      document.getElementById(tier + '_photo_confirm').textContent = '✓ Photo added';
-      document.getElementById(tier + '_photo_confirm').classList.add('show');
+      resizePhoto(e.target.result, function(resizedDataUrl) {
+        const img = document.getElementById(tier + '_photo_img');
+        img.src = resizedDataUrl;
+        delete img.dataset.existingUrl; // a fresh photo replaces any existing one
+        document.getElementById(tier + '_photo_preview').classList.add('has-image');
+        document.getElementById(tier + '_photo_confirm').textContent = '✓ Photo added';
+        document.getElementById(tier + '_photo_confirm').classList.add('show');
+      });
     };
     reader.readAsDataURL(file);
+  }
+
+  // Shrinks a photo down to a reasonable size before it's sent anywhere.
+  // Camera photos can easily be several MB, which is large enough to get
+  // rejected outright by the server before it even responds. Resizing to
+  // a max dimension and moderate JPEG quality keeps it well under any
+  // size limit without a visible quality loss on a phone or laptop screen.
+  function resizePhoto(dataUrl, callback) {
+    const img = new Image();
+    img.onload = function() {
+      const maxDim = 1600;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = dataUrl;
   }
 
   function getPhotoDataUrl(tier) {
@@ -556,6 +635,7 @@
       }
 
       showConfirmation(result.estimate_url, payload.customer_name, result.edited);
+      clearDraft();
 
     } catch (err) {
       alert('Could not save this estimate: ' + err.message + '\n\nPlease check your connection and try again.');
@@ -637,6 +717,8 @@
   document.getElementById('proposal_date').valueAsDate = new Date();
   if (EDIT_ID) {
     loadForEdit();
+  } else {
+    offerDraftRestore();
   }
 </script>
 

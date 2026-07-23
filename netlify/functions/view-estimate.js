@@ -90,6 +90,15 @@ function formatDate(dateStr) {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+function formatDateTime(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return isoStr;
+  return d.toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" });
+}
+
+const TIER_LABELS = { good: "A Good Option", better: "A Better Option", best: "The Best Option" };
+
 function featuresListHtml(featuresText) {
   if (!featuresText) return "";
   const lines = featuresText.split("\n").map(l => l.trim()).filter(Boolean);
@@ -110,12 +119,17 @@ function isExpired(expiresDate) {
   return exp < today;
 }
 
-function tierCardHtml(label, tier, data, accentColor) {
+function tierCardHtml(label, tier, data, accentColor, estimateId, approvedTier) {
   const hasContent = data.brand || data.price || data.warranty || data.features;
   if (!hasContent) return "";
 
+  const isApproved = approvedTier === tier;
+  const approveButton = approvedTier
+    ? (isApproved ? `<div class="approved-tag">✓ You approved this option</div>` : "")
+    : `<button type="button" class="approve-btn" onclick="approveEstimate('${estimateId}', '${tier}', this)">I Approve This Option</button>`;
+
   return `
-    <div class="tier-card">
+    <div class="tier-card${isApproved ? " tier-card-approved" : ""}">
       <div class="tier-label">${esc(label)}</div>
       ${data.brand ? `<div class="tier-brand">${esc(data.brand)}</div>` : ""}
       <div class="tier-meta">
@@ -125,6 +139,7 @@ function tierCardHtml(label, tier, data, accentColor) {
       ${data.warranty ? `<div class="tier-warranty">${esc(data.warranty)}</div>` : ""}
       ${featuresListHtml(data.features)}
       ${data.photo_url ? `<div class="tier-photo"><img src="${esc(data.photo_url)}" alt="Photo of ${esc(data.brand || label)}"></div>` : ""}
+      ${approveButton}
     </div>`;
 }
 
@@ -136,17 +151,17 @@ function renderEstimatePage(estimate, business) {
   const goodCard = tierCardHtml("A Good Option", "good", {
     brand: estimate.good_brand, seer: estimate.good_seer, price: estimate.good_price,
     warranty: estimate.good_warranty, features: estimate.good_features, photo_url: estimate.good_photo_url,
-  }, accent);
+  }, accent, estimate.id, estimate.approved_tier);
 
   const betterCard = tierCardHtml("A Better Option", "better", {
     brand: estimate.better_brand, seer: estimate.better_seer, price: estimate.better_price,
     warranty: estimate.better_warranty, features: estimate.better_features, photo_url: estimate.better_photo_url,
-  }, accent);
+  }, accent, estimate.id, estimate.approved_tier);
 
   const bestCard = tierCardHtml("The Best Option", "best", {
     brand: estimate.best_brand, seer: estimate.best_seer, price: estimate.best_price,
     warranty: estimate.best_warranty, features: estimate.best_features, photo_url: estimate.best_photo_url,
-  }, accent);
+  }, accent, estimate.id, estimate.approved_tier);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -244,6 +259,42 @@ function renderEstimatePage(estimate, business) {
   .features li{ margin-bottom:4px; }
   .tier-photo img{ width:100%; border-radius:5px; border:1px solid var(--hairline); display:block; }
 
+  .approve-btn{
+    display:block;
+    width:100%;
+    margin-top:16px;
+    padding:12px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .approve-btn:disabled{ opacity:.6; cursor:default; }
+  .approved-tag{
+    margin-top:16px;
+    padding:10px;
+    text-align:center;
+    background:#EAF6EE;
+    color:#2F6F4E;
+    border-radius:5px;
+    font-size:13px;
+    font-weight:600;
+  }
+  .tier-card-approved{ border-color:var(--accent); border-width:2px; }
+  .approved-banner{
+    background:#EAF6EE;
+    border:1px solid #B7DDC4;
+    color:#2F6F4E;
+    border-radius:6px;
+    padding:14px 18px;
+    margin-bottom:16px;
+    font-size:14px;
+  }
+
   .info-grid{
     display:grid;
     grid-template-columns: repeat(2, 1fr);
@@ -316,6 +367,11 @@ function renderEstimatePage(estimate, business) {
     ${expired ? `<div class="expired-banner">This proposal's pricing was valid through ${esc(formatDate(estimate.expires_date))}. Please contact us to confirm current pricing.</div>` : ""}
 
     <h2 class="section-title">Your Options</h2>
+    ${estimate.approved_tier ? `
+    <div class="approved-banner">
+      ✓ You approved ${esc(TIER_LABELS[estimate.approved_tier] || estimate.approved_tier)} on ${esc(formatDateTime(estimate.approved_at))}. ${esc(business.business_name)} will be in touch to finalize next steps.
+    </div>
+    ` : ""}
     <div class="tiers-grid">
       ${goodCard}
       ${betterCard}
@@ -344,6 +400,30 @@ function renderEstimatePage(estimate, business) {
     ${business.license_number ? `Licensed #${esc(business.license_number)}<br>` : ""}
     ${business.phone ? `${esc(business.phone)}` : ""}
   </footer>
+
+<script>
+  async function approveEstimate(estimateId, tier, btn) {
+    if (!confirm("Approve this option? This will let the business know right away.")) return;
+    btn.disabled = true;
+    btn.textContent = "Submitting…";
+    try {
+      const res = await fetch('/.netlify/functions/approve-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estimate_id: estimateId, tier: tier }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || result.error || 'Something went wrong.');
+      }
+      location.reload();
+    } catch (err) {
+      alert('Could not record your approval: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'I Approve This Option';
+    }
+  }
+</script>
 
 </body>
 </html>`;

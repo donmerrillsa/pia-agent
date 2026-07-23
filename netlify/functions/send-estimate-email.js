@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     return respond(400, { error: "Invalid JSON body." });
   }
 
-  const { business_id, customer_email, customer_name, estimate_url } = body;
+  const { business_id, customer_email, customer_name, estimate_url, message } = body;
 
   if (!business_id || !customer_email || !estimate_url) {
     return respond(400, { error: "Missing business_id, customer_email, or estimate_url." });
@@ -49,10 +49,11 @@ exports.handler = async (event) => {
 
     const bizName = business?.business_name || "Your HVAC Provider";
     const subject = `Your HVAC Replacement Estimate — ${bizName}`;
+    const messageBody = message && message.trim()
+      ? message
+      : `Hi${customer_name ? " " + customer_name : ""},\n\nHere's your estimate: ${estimate_url}\n\nLet us know if you have any questions.`;
     const html = `
-      <p>Hi${customer_name ? " " + escapeHtml(customer_name) : ""},</p>
-      <p>Here's your estimate: <a href="${estimate_url}">${estimate_url}</a></p>
-      <p>Let us know if you have any questions.</p>
+      <p>${escapeHtml(messageBody).replace(/\n/g, "<br>")}</p>
       <p>${escapeHtml(bizName)}</p>
     `;
 

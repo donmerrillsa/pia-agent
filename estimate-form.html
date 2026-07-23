@@ -302,7 +302,7 @@
           <label>Photo of This Unit</label>
           <div class="photo-field">
             <button type="button" class="photo-btn" onclick="document.getElementById('good_photo').click()">
-              📷 Add a Photo
+              📷 Upload Photo
             </button>
             <input type="file" id="good_photo" name="good_photo" accept="image/*" onchange="handlePhoto(this, 'good')">
             <div class="photo-preview" id="good_photo_preview"><img id="good_photo_img" src="" alt=""></div>
@@ -342,7 +342,7 @@
           <label>Photo of This Unit</label>
           <div class="photo-field">
             <button type="button" class="photo-btn" onclick="document.getElementById('better_photo').click()">
-              📷 Add a Photo
+              📷 Upload Photo
             </button>
             <input type="file" id="better_photo" name="better_photo" accept="image/*" onchange="handlePhoto(this, 'better')">
             <div class="photo-preview" id="better_photo_preview"><img id="better_photo_img" src="" alt=""></div>
@@ -382,7 +382,7 @@
           <label>Photo of This Unit</label>
           <div class="photo-field">
             <button type="button" class="photo-btn" onclick="document.getElementById('best_photo').click()">
-              📷 Add a Photo
+              📷 Upload Photo
             </button>
             <input type="file" id="best_photo" name="best_photo" accept="image/*" onchange="handlePhoto(this, 'best')">
             <div class="photo-preview" id="best_photo_preview"><img id="best_photo_img" src="" alt=""></div>
@@ -552,7 +552,7 @@
     img.dataset.existingUrl = url;
     document.getElementById(tier + '_photo_preview').classList.add('has-image');
     const confirmEl = document.getElementById(tier + '_photo_confirm');
-    confirmEl.textContent = '✓ Current photo (tap Add a Photo to replace)';
+    confirmEl.textContent = '✓ Current photo (tap Upload Photo to replace)';
     confirmEl.classList.add('show');
   }
 

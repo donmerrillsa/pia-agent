@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIA — Pipeline Integrity Agent | Buyer Overview</title>
+<style>
+  :root{
+    --navy:#0D1B2A;
+    --system-blue:#2E6DA4;
+    --process-blue:#4A89C0;
+    --amber:#F5A623;
+    --light-blue:#DEEAF6;
+    --white:#FFFFFF;
+    --gray:#6B7280;
+    --ink:#1F2A33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--ink);
+    background:var(--white);
+    line-height:1.5;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px;}
+
+  /* Hero */
+  .hero{
+    background:var(--navy);
+    color:var(--white);
+    padding:70px 0 60px;
+  }
+  .hero .eyebrow{
+    color:var(--light-blue);
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-size:12px;
+    font-weight:bold;
+    margin-bottom:14px;
+  }
+  .hero h1{
+    font-size:36px;
+    line-height:1.2;
+    margin-bottom:16px;
+  }
+  .hero h1 .amber{color:var(--amber);}
+  .hero p{
+    font-size:16px;
+    color:var(--light-blue);
+    max-width:560px;
+  }
+
+  /* Positioning statement band */
+  .statement{
+    background:var(--light-blue);
+    padding:28px 0;
+  }
+  .statement p{
+    font-size:18px;
+    font-style:italic;
+    color:var(--navy);
+    text-align:center;
+    font-weight:bold;
+  }
+
+  section{padding:48px 0;}
+  h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--system-blue);
+    margin-bottom:22px;
+    border-bottom:2px solid var(--light-blue);
+    padding-bottom:10px;
+  }
+
+  /* Does grid */
+  .does-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .does-item{
+    border:1px solid #E5E7EB;
+    border-left:4px solid var(--system-blue);
+    border-radius:4px;
+    padding:14px 16px;
+  }
+  .does-item .name{font-weight:bold;color:var(--navy);font-size:14px;display:block;margin-bottom:4px;}
+  .does-item .desc{font-size:12.5px;color:var(--gray);}
+
+  /* Doesn't do */
+  .doesnt{
+    background:var(--navy);
+    color:var(--white);
+    border-radius:6px;
+    padding:28px 30px;
+  }
+  .doesnt h2{color:var(--amber);border-bottom-color:rgba(255,255,255,0.15);}
+  .doesnt ul{list-style:none;}
+  .doesnt li{
+    padding-left:20px;
+    position:relative;
+    margin-bottom:9px;
+    font-size:14px;
+    color:var(--light-blue);
+  }
+  .doesnt li::before{
+    content:"—";
+    position:absolute;left:0;color:var(--amber);
+  }
+  .doesnt .note{
+    margin-top:16px;
+    font-size:13px;
+    color:var(--white);
+    font-style:italic;
+    border-top:1px solid rgba(255,255,255,0.15);
+    padding-top:14px;
+  }
+
+  /* Pricing */
+  .pricing-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+  .price-card{
+    border:2px solid var(--light-blue);
+    border-radius:6px;
+    padding:22px 20px;
+    text-align:center;
+  }
+  .price-card .tag{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--gray);
+    margin-bottom:8px;
+  }
+  .price-card .amount{
+    font-size:30px;
+    font-weight:bold;
+    color:var(--navy);
+  }
+  .price-card .amount .amber{color:var(--amber);}
+  .price-card .detail{font-size:12.5px;color:var(--gray);margin-top:6px;}
+
+  /* CTA */
+  .cta{
+    background:var(--navy);
+    text-align:center;
+    padding:56px 24px;
+    color:var(--white);
+  }
+  .cta h2{
+    color:var(--white);
+    border:none;
+    font-size:24px;
+    text-transform:none;
+    letter-spacing:0;
+    margin-bottom:10px;
+  }
+  .cta p{color:var(--light-blue);margin-bottom:26px;font-size:15px;}
+  .cta a.button{
+    display:inline-block;
+    background:var(--amber);
+    color:var(--navy);
+    font-weight:bold;
+    text-decoration:none;
+    padding:14px 32px;
+    border-radius:4px;
+    font-size:15px;
+    letter-spacing:0.3px;
+  }
+  .cta .fineprint{
+    margin-top:16px;
+    font-size:11.5px;
+    color:var(--process-blue);
+  }
+
+  footer{
+    text-align:center;
+    padding:22px 0;
+    font-size:11px;
+    color:var(--gray);
+  }
+
+  @media (max-width:600px){
+    .does-grid, .pricing-grid{grid-template-columns:1fr;}
+    .hero h1{font-size:26px;}
+    .hero p{font-size:15px;}
+    .statement p{font-size:16px;}
+    .does-item .desc{font-size:14px;}
+    .does-item .name{font-size:15px;}
+    .doesnt li{font-size:15px;}
+    .doesnt .note{font-size:14px;}
+    .price-card .detail{font-size:14px;}
+    .cta p{font-size:15px;}
+    .cta .fineprint{font-size:13px;}
+    footer{font-size:13px;}
+    h2{font-size:14px;}
+  }
+</style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Pipeline Integrity Agent</div>
+      <h1>Stop guessing what's happening<br>in your <span class="amber">sales pipeline.</span></h1>
+      <p>PIA connects to your HubSpot pipeline and continuously watches for what's stalling, aging, or quietly slipping away — before it costs you the deal.</p>
+    </div>
+  </div>
+
+  <div class="statement">
+    <div class="wrap">
+      <p>"PIA is not a forecasting tool. It's a Continuous Revenue Improvement System."</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <section>
+      <h2>What PIA Does</h2>
+      <div class="does-grid">
+        <div class="does-item">
+          <span class="name">Continuous Pipeline Monitoring</span>
+          <span class="desc">Connects to your HubSpot pipeline and keeps watch automatically — no manual pulling of reports.</span>
+        </div>
+        <div class="does-item">
+          <span class="name">Stalled Deal Detection</span>
+          <span class="desc">Flags deals going quiet at each stage, using configurable inactivity thresholds (7/10/14 days).</span>
+        </div>
+        <div class="does-item">
+          <span class="name">Confidence Scoring</span>
+          <span class="desc">Know whether this month's forecast is real or wishful thinking, based on how much of your pipeline is stalled.</span>
+        </div>
+        <div class="does-item">
+          <span class="name">Daily Pulse</span>
+          <span class="desc">A short email each morning (Mon–Thu) showing what changed in your pipeline overnight.</span>
+        </div>
+        <div class="does-item">
+          <span class="name">Weekly Pipeline Integrity Report</span>
+          <span class="desc">The full picture, every Friday — stalled value, confidence trend, and what needs attention.</span>
+        </div>
+        <div class="does-item">
+          <span class="name">Failure Alerts</span>
+          <span class="desc">If the monitoring itself breaks, you're told immediately — not left in the dark.</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="doesnt">
+        <h2>What PIA Doesn't Do — On Purpose</h2>
+        <ul>
+          <li>Doesn't write anything back into your CRM</li>
+          <li>Doesn't draft outreach or follow-up messages</li>
+          <li>Doesn't run approval workflows or task assignment</li>
+          <li>Doesn't predict win probability or replace your forecast process</li>
+          <li>Doesn't decide what action to take next — that's still you and your team</li>
+        </ul>
+        <div class="note">PIA watches the pipeline and flags drift before it becomes invisible. It doesn't decide what to do about it — that boundary is what keeps it fast, reliable, and easy to trust.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Pricing</h2>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="tag">Pilot</div>
+          <div class="amount"><span class="amber">$2,500</span></div>
+          <div class="detail">Flat fee, one-time</div>
+        </div>
+        <div class="price-card">
+          <div class="tag">Ongoing</div>
+          <div class="amount"><span class="amber">$3,000</span>/yr</div>
+          <div class="detail">Flat rate, up to 15 reps — custom quote above 15</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="cta">
+    <div class="wrap">
+      <h2>See if PIA fits your pipeline.</h2>
+      <p>A 20-minute call — no pitch deck, just a look at how it would work with your setup.</p>
+      <a class="button" href="https://calendly.com/donmerrill-sa/30min">Book a Call →</a>
+    </div>
+  </div>
+
+  <footer>Merrill &amp; Associates — Pipeline Integrity Agent (PIA)</footer>
+
+</body>
+</html>

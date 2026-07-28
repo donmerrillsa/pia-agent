@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Estimate — MASTER TEST (Not a Real Customer)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#12283C;
+    --orange:#FE8D00;
+    --slate:#4C6478;
+    --paper:#EAF3F7;
+    --card:#FFFFFF;
+    --hairline:#DCE7ED;
+    --ink:#1A1A1A;
+    --good:#2F6F4E;
+    --bad:#B33A3A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:80px;
+  }
+  .test-banner{
+    background:#B33A3A;
+    color:#fff;
+    text-align:center;
+    font-family:'Roboto Mono',monospace;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:8px 12px;
+    font-weight:600;
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:20px 20px 18px;
+    border-bottom:4px solid var(--orange);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  header .eyebrow{
+    font-family:'Roboto Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--orange);
+    margin-bottom:4px;
+  }
+  header h1{
+    font-family:'Zilla Slab',serif;
+    font-size:22px;
+    margin:0;
+  }
+
+  .wrap{ max-width:640px; margin:0 auto; padding:20px 16px; }
+
+  .section{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    margin-bottom:20px;
+    overflow:hidden;
+  }
+  .section-head{
+    padding:16px 18px;
+    border-bottom:1px solid var(--hairline);
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .section-num{
+    font-family:'Roboto Mono',monospace;
+    font-size:12px;
+    color:var(--orange);
+    font-weight:600;
+  }
+  .section-head h2{
+    font-family:'Zilla Slab',serif;
+    font-size:18px;
+    margin:0;
+    color:var(--navy);
+  }
+  .section-body{ padding:18px; }
+  .section.tier-good .section-head{ border-left:4px solid var(--hairline); }
+  .section.tier-better .section-head{ border-left:4px solid var(--slate); }
+  .section.tier-best .section-head{ border-left:4px solid var(--orange); }
+
+  .field{ margin-bottom:18px; }
+  .field:last-child{ margin-bottom:0; }
+  label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    color:var(--slate);
+    margin-bottom:6px;
+  }
+  input[type="text"], input[type="date"], input[type="email"], textarea{
+    width:100%;
+    padding:14px;
+    font-size:16px;
+    font-family:'Inter',sans-serif;
+    border:1.5px solid var(--hairline);
+    border-radius:5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input:focus, textarea:focus{
+    outline:none;
+    border-color:var(--orange);
+  }
+  textarea{ min-height:90px; resize:vertical; }
+
+  .photo-field{
+    border:1.5px dashed var(--hairline);
+    border-radius:6px;
+    padding:16px;
+    text-align:center;
+    background:var(--paper);
+  }
+  .photo-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    padding:14px 22px;
+    border-radius:5px;
+    font-size:15px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .photo-btn:active{ background:#0d1e2d; }
+  input[type="file"]{ display:none; }
+  .photo-preview{
+    margin-top:14px;
+    display:none;
+  }
+  .photo-preview.has-image{ display:block; }
+  .photo-preview img{
+    max-width:100%;
+    max-height:220px;
+    border-radius:5px;
+    border:1px solid var(--hairline);
+  }
+  .photo-confirm{
+    margin-top:8px;
+    font-size:13px;
+    color:var(--good);
+    font-weight:600;
+    display:none;
+    align-items:center;
+    gap:6px;
+  }
+  .photo-confirm.show{ display:flex; justify-content:center; }
+
+  .send-bar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    background:#fff;
+    border-top:1px solid var(--hairline);
+    padding:14px 16px;
+    box-shadow:0 -2px 10px rgba(0,0,0,.06);
+  }
+  .send-btn{
+    max-width:640px;
+    margin:0 auto;
+    display:block;
+    width:100%;
+    background:var(--orange);
+    color:var(--navy);
+    border:none;
+    padding:16px;
+    border-radius:6px;
+    font-size:17px;
+    font-weight:700;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .send-btn:active{ background:#e07e00; }
+  .send-btn[disabled]{ background:var(--hairline); color:var(--slate); cursor:not-allowed; }
+  .secondary-btn{
+    background:var(--navy);
+    color:#fff;
+  }
+  .secondary-btn:active{ background:#0d1e2d; }
+
+  .confirm-screen{
+    display:none;
+    text-align:center;
+    padding:30px 20px;
+  }
+  .confirm-screen.show{ display:block; }
+  .confirm-screen .checkmark{ font-size:48px; margin-bottom:12px; }
+  .confirm-screen h2{ font-family:'Zilla Slab',serif; color:var(--navy); margin:0 0 8px; }
+  .link-box{
+    background:var(--card);
+    border:1.5px solid var(--hairline);
+    border-radius:6px;
+    padding:14px;
+    margin:16px auto;
+    max-width:480px;
+    font-family:'Roboto Mono',monospace;
+    font-size:13px;
+    color:var(--navy);
+    word-break:break-all;
+  }
+  .confirm-actions{
+    max-width:480px;
+    margin:0 auto;
+  }
+  .email-block{
+    max-width:480px;
+    margin:24px auto 0;
+    text-align:left;
+  }
+  .email-block textarea{ min-height:110px; }
+  #emailStatus{ min-height:18px; }
+</style>
+</head>
+<body>
+
+  <div class="test-banner">⚠ MASTER TEST FILE — NOT A REAL CUSTOMER — SAFE TO USE FAKE DATA</div>
+
+  <header>
+    <div class="eyebrow">Master Test Account</div>
+    <h1 id="formTitle">New Estimate (Test)</h1>
+  </header>
+
+  <div class="wrap" id="formWrap">
+    <input type="hidden" id="estimate_id" value="">
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-num">1</span>
+        <h2>Job Details</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="customer_name">Customer Name</label>
+          <input type="text" id="customer_name" name="customer_name" required>
+        </div>
+        <div class="field">
+          <label for="site_address">Site Address</label>
+          <input type="text" id="site_address" name="site_address" required>
+        </div>
+        <div class="field">
+          <label for="proposal_date">Date</label>
+          <input type="date" id="proposal_date" name="proposal_date">
+        </div>
+        <div class="field">
+          <label for="current_system">Current System</label>
+          <input type="text" id="current_system" name="current_system" placeholder="e.g. 5-ton rooftop package unit, 16 yrs">
+        </div>
+        <div class="field">
+          <label for="diagnosis">Diagnosis</label>
+          <textarea id="diagnosis" name="diagnosis"></textarea>
+        </div>
+        <div class="field">
+          <label for="technician">Prepared By</label>
+          <input type="text" id="technician" name="technician" value="Test User">
+        </div>
+        <div class="field">
+          <label for="scope_of_work">Scope of Work</label>
+          <textarea id="scope_of_work" name="scope_of_work" placeholder="What's included in the install — removal of old equipment, refrigerant line work, electrical, ductwork, etc."></textarea>
+        </div>
+        <div class="field">
+          <label for="financing_options">Financing Options</label>
+          <textarea id="financing_options" name="financing_options" placeholder="e.g. 0% for 12 months on approved credit, or ask about our payment plans"></textarea>
+        </div>
+        <div class="field">
+          <label for="expires_date">Proposal Expires</label>
+          <input type="date" id="expires_date" name="expires_date">
+        </div>
+      </div>
+    </div>
+
+    <div class="section tier-good">
+      <div class="section-head">
+        <span class="section-num">2</span>
+        <h2>Good Option</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="good_brand">Brand / Model</label>
+          <input type="text" id="good_brand" name="good_brand">
+        </div>
+        <div class="field">
+          <label for="good_seer">SEER2 Rating</label>
+          <input type="text" id="good_seer" name="good_seer">
+        </div>
+        <div class="field">
+          <label for="good_price">Price (installed)</label>
+          <input type="text" id="good_price" name="good_price" placeholder="$">
+        </div>
+        <div class="field">
+          <label for="good_warranty">Warranty Terms</label>
+          <input type="text" id="good_warranty" name="good_warranty">
+        </div>
+        <div class="field">
+          <label for="good_features">Key Features</label>
+          <textarea id="good_features" name="good_features" placeholder="One per line"></textarea>
+        </div>
+        <div class="field">
+          <label>Photo of This Unit</label>
+          <div class="photo-field">
+            <button type="button" class="photo-btn" onclick="document.getElementById('good_photo').click()">
+              📷 Upload Photo
+            </button>
+            <input type="file" id="good_photo" name="good_photo" accept="image/*" onchange="handlePhoto(this, 'good')">
+            <div class="photo-preview" id="good_photo_preview"><img id="good_photo_img" src="" alt=""></div>
+            <div class="photo-confirm" id="good_photo_confirm">✓ Photo added</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section tier-better">
+      <div class="section-head">
+        <span class="section-num">3</span>
+        <h2>Better Option</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="better_brand">Brand / Model</label>
+          <input type="text" id="better_brand" name="better_brand">
+        </div>
+        <div class="field">
+          <label for="better_seer">SEER2 Rating</label>
+          <input type="text" id="better_seer" name="better_seer">
+        </div>
+        <div class="field">
+          <label for="better_price">Price (installed)</label>
+          <input type="text" id="better_price" name="better_price" placeholder="$">
+        </div>
+        <div class="field">
+          <label for="better_warranty">Warranty Terms</label>
+          <input type="text" id="better_warranty" name="better_warranty">
+        </div>
+        <div class="field">
+          <label for="better_features">Key Features</label>
+          <textarea id="better_features" name="better_features" placeholder="One per line"></textarea>
+        </div>
+        <div class="field">
+          <label>Photo of This Unit</label>
+          <div class="photo-field">
+            <button type="button" class="photo-btn" onclick="document.getElementById('better_photo').click()">
+              📷 Upload Photo
+            </button>
+            <input type="file" id="better_photo" name="better_photo" accept="image/*" onchange="handlePhoto(this, 'better')">
+            <div class="photo-preview" id="better_photo_preview"><img id="better_photo_img" src="" alt=""></div>
+            <div class="photo-confirm" id="better_photo_confirm">✓ Photo added</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section tier-best">
+      <div class="section-head">
+        <span class="section-num">4</span>
+        <h2>Best Option</h2>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label for="best_brand">Brand / Model</label>
+          <input type="text" id="best_brand" name="best_brand">
+        </div>
+        <div class="field">
+          <label for="best_seer">SEER2 Rating</label>
+          <input type="text" id="best_seer" name="best_seer">
+        </div>
+        <div class="field">
+          <label for="best_price">Price (installed)</label>
+          <input type="text" id="best_price" name="best_price" placeholder="$">
+        </div>
+        <div class="field">
+          <label for="best_warranty">Warranty Terms</label>
+          <input type="text" id="best_warranty" name="best_warranty">
+        </div>
+        <div class="field">
+          <label for="best_features">Key Features</label>
+          <textarea id="best_features" name="best_features" placeholder="One per line"></textarea>
+        </div>
+        <div class="field">
+          <label>Photo of This Unit</label>
+          <div class="photo-field">
+            <button type="button" class="photo-btn" onclick="document.getElementById('best_photo').click()">
+              📷 Upload Photo
+            </button>
+            <input type="file" id="best_photo" name="best_photo" accept="image/*" onchange="handlePhoto(this, 'best')">
+            <div class="photo-preview" id="best_photo_preview"><img id="best_photo_img" src="" alt=""></div>
+            <div class="photo-confirm" id="best_photo_confirm">✓ Photo added</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /formWrap -->
+
+  <div class="confirm-screen" id="confirmScreen">
+    <div class="checkmark">✅</div>
+    <h2 id="confirmHeading">Estimate Ready</h2>
+    <p id="confirmText">Here's the link for this estimate:</p>
+    <div class="link-box" id="linkBox"></div>
+    <div class="confirm-actions">
+      <button type="button" class="send-btn secondary-btn" id="copyLinkBtn" onclick="copyLink()">🔗 Copy Link</button>
+    </div>
+
+    <div class="email-block">
+      <div class="field">
+        <label for="send_to_email">Email It to Customer (optional)</label>
+        <input type="email" id="send_to_email" placeholder="customer@example.com">
+      </div>
+      <div class="field">
+        <label for="send_message">Message</label>
+        <textarea id="send_message"></textarea>
+      </div>
+      <button type="button" class="send-btn" id="emailCustomerBtn" onclick="emailCustomer()">✉️ Send Email</button>
+      <p id="emailStatus"></p>
+    </div>
+  </div>
+
+  <div class="send-bar" id="sendBar">
+    <button type="button" class="send-btn" id="sendBtn" onclick="handleSend()">Send Estimate</button>
+  </div>
+
+<script>
+  const BUSINESS_ID = "883e5c89-7fcb-4ba5-ad3a-199560e3617d"; // MASTER TEST ACCOUNT — from estimate_businesses table
+  const SUBMIT_ENDPOINT = "/.netlify/functions/submit-estimate";
+  const GET_ENDPOINT = "/.netlify/functions/get-estimate";
+  const EMAIL_ENDPOINT = "/.netlify/functions/send-estimate-email";
+
+  const DRAFT_KEY = 'pia_estimate_draft_master';
+  const TEXT_FIELD_IDS = [
+    'customer_name', 'site_address', 'proposal_date', 'current_system', 'diagnosis', 'technician',
+    'scope_of_work', 'financing_options', 'expires_date',
+    'good_brand', 'good_seer', 'good_price', 'good_warranty', 'good_features',
+    'better_brand', 'better_seer', 'better_price', 'better_warranty', 'better_features',
+    'best_brand', 'best_seer', 'best_price', 'best_warranty', 'best_features',
+  ];
+
+  // Saves everything you've typed (not photos — those are too large to
+  // safely store this way) so that if the browser reloads this tab after
+  // you've switched to another app, your progress isn't lost.
+  function saveDraft() {
+    const draft = {};
+    TEXT_FIELD_IDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) draft[id] = el.value;
+    });
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) { /* storage full or unavailable — fail silently, not critical */ }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+
+  function offerDraftRestore() {
+    let saved;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      saved = JSON.parse(raw);
+    } catch (e) { return; }
+
+    const hasContent = Object.values(saved).some((v) => v && v.trim());
+    if (!hasContent) return;
+
+    if (confirm('It looks like you have an unsaved estimate from earlier. Restore it? (Any photos will need to be added again.)')) {
+      TEXT_FIELD_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && saved[id]) el.value = saved[id];
+      });
+    } else {
+      clearDraft();
+    }
+  }
+
+  let draftSaveTimer = null;
+  document.getElementById('formWrap').addEventListener('input', function() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraft, 500);
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const EDIT_ID = params.get('id');
+
+  let currentEstimateUrl = "";
+  let currentCustomerName = "";
+
+  function handlePhoto(input, tier) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      resizePhoto(e.target.result, function(resizedDataUrl) {
+        const img = document.getElementById(tier + '_photo_img');
+        img.src = resizedDataUrl;
+        delete img.dataset.existingUrl; // a fresh photo replaces any existing one
+        document.getElementById(tier + '_photo_preview').classList.add('has-image');
+        document.getElementById(tier + '_photo_confirm').textContent = '✓ Photo added';
+        document.getElementById(tier + '_photo_confirm').classList.add('show');
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Shrinks a photo down to a reasonable size before it's sent anywhere.
+  // Camera photos can easily be several MB, which is large enough to get
+  // rejected outright by the server before it even responds. Resizing to
+  // a max dimension and moderate JPEG quality keeps it well under any
+  // size limit without a visible quality loss on a phone or laptop screen.
+  function resizePhoto(dataUrl, callback) {
+    const img = new Image();
+    img.onload = function() {
+      const maxDim = 1600;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = dataUrl;
+  }
+
+  function getPhotoDataUrl(tier) {
+    const img = document.getElementById(tier + '_photo_img');
+    return img && img.src && img.src.startsWith('data:image') ? img.src : null;
+  }
+
+  function buildTierPayload(tier) {
+    const img = document.getElementById(tier + '_photo_img');
+    return {
+      brand: document.getElementById(tier + '_brand').value,
+      seer: document.getElementById(tier + '_seer').value,
+      price: document.getElementById(tier + '_price').value,
+      warranty: document.getElementById(tier + '_warranty').value,
+      features: document.getElementById(tier + '_features').value,
+      photo_data_url: getPhotoDataUrl(tier),
+      existing_photo_url: (img && img.dataset.existingUrl) || null,
+    };
+  }
+
+  function setExistingPhoto(tier, url) {
+    if (!url) return;
+    const img = document.getElementById(tier + '_photo_img');
+    img.src = url;
+    img.dataset.existingUrl = url;
+    document.getElementById(tier + '_photo_preview').classList.add('has-image');
+    const confirmEl = document.getElementById(tier + '_photo_confirm');
+    confirmEl.textContent = '✓ Current photo (tap Upload Photo to replace)';
+    confirmEl.classList.add('show');
+  }
+
+  async function loadForEdit() {
+    document.getElementById('estimate_id').value = EDIT_ID;
+    document.getElementById('formTitle').textContent = 'Edit Estimate (Test)';
+    document.getElementById('sendBtn').textContent = 'Save Changes';
+    document.title = 'Edit Estimate — MASTER TEST (Not a Real Customer)';
+
+    try {
+      const res = await fetch(`${GET_ENDPOINT}?id=${encodeURIComponent(EDIT_ID)}`);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Could not load this estimate.');
+      }
+      const e = result.estimate;
+
+      document.getElementById('customer_name').value = e.customer_name || '';
+      document.getElementById('site_address').value = e.site_address || '';
+      if (e.proposal_date) document.getElementById('proposal_date').value = e.proposal_date;
+      document.getElementById('current_system').value = e.current_system || '';
+      document.getElementById('diagnosis').value = e.diagnosis || '';
+      document.getElementById('technician').value = e.technician || '';
+      document.getElementById('scope_of_work').value = e.scope_of_work || '';
+      document.getElementById('financing_options').value = e.financing_options || '';
+      if (e.expires_date) document.getElementById('expires_date').value = e.expires_date;
+
+      for (const tier of ['good', 'better', 'best']) {
+        document.getElementById(tier + '_brand').value = e[tier + '_brand'] || '';
+        document.getElementById(tier + '_seer').value = e[tier + '_seer'] || '';
+        document.getElementById(tier + '_price').value = e[tier + '_price'] || '';
+        document.getElementById(tier + '_warranty').value = e[tier + '_warranty'] || '';
+        document.getElementById(tier + '_features').value = e[tier + '_features'] || '';
+        setExistingPhoto(tier, e[tier + '_photo_url']);
+      }
+    } catch (err) {
+      alert('Could not load this estimate for editing: ' + err.message);
+    }
+  }
+
+  async function handleSend() {
+    const requiredOk = document.getElementById('customer_name').value.trim() &&
+                        document.getElementById('site_address').value.trim();
+    if (!requiredOk) {
+      alert('Please fill in at least the customer name and site address before sending.');
+      return;
+    }
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    btn.textContent = EDIT_ID ? 'Saving…' : 'Sending…';
+
+    const payload = {
+      business_id: BUSINESS_ID,
+      customer_name: document.getElementById('customer_name').value,
+      site_address: document.getElementById('site_address').value,
+      proposal_date: document.getElementById('proposal_date').value,
+      current_system: document.getElementById('current_system').value,
+      diagnosis: document.getElementById('diagnosis').value,
+      technician: document.getElementById('technician').value,
+      scope_of_work: document.getElementById('scope_of_work').value,
+      financing_options: document.getElementById('financing_options').value,
+      expires_date: document.getElementById('expires_date').value,
+      good: buildTierPayload('good'),
+      better: buildTierPayload('better'),
+      best: buildTierPayload('best'),
+    };
+    if (EDIT_ID) payload.id = EDIT_ID;
+
+    try {
+      const res = await fetch(SUBMIT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || result.error || 'Something went wrong.');
+      }
+
+      showConfirmation(result.estimate_url, payload.customer_name, result.edited);
+      clearDraft();
+
+    } catch (err) {
+      alert('Could not save this estimate: ' + err.message + '\n\nPlease check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = EDIT_ID ? 'Save Changes' : 'Send Estimate';
+    }
+  }
+
+  function showConfirmation(estimateUrl, customerName, edited) {
+    document.getElementById('formWrap').style.display = 'none';
+    document.getElementById('sendBar').style.display = 'none';
+
+    currentEstimateUrl = estimateUrl;
+    currentCustomerName = customerName || '';
+
+    document.getElementById('linkBox').textContent = estimateUrl;
+    document.getElementById('send_message').value =
+      `Hi${customerName ? " " + customerName : ""},\n\nHere's your estimate: ${estimateUrl}\n\nLet us know if you have any questions.`;
+    document.getElementById('confirmHeading').textContent = edited ? 'Estimate Updated' : 'Estimate Ready';
+    document.getElementById('confirmText').textContent =
+      edited
+        ? (customerName ? `The estimate for ${customerName} has been updated.` : 'This estimate has been updated.')
+        : (customerName ? `Estimate for ${customerName} is ready.` : 'Estimate is ready.');
+
+    document.getElementById('confirmScreen').classList.add('show');
+  }
+
+  function copyLink() {
+    const btn = document.getElementById('copyLinkBtn');
+    const original = btn.textContent;
+    navigator.clipboard.writeText(currentEstimateUrl).then(() => {
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = original; }, 2000);
+    }).catch(() => {
+      alert('Could not copy automatically. Here is the link:\n\n' + currentEstimateUrl);
+    });
+  }
+
+  async function emailCustomer() {
+    const email = document.getElementById('send_to_email').value.trim();
+    if (!email) {
+      alert("Please enter the customer's email address first.");
+      return;
+    }
+    const btn = document.getElementById('emailCustomerBtn');
+    const statusEl = document.getElementById('emailStatus');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    try {
+      const res = await fetch(EMAIL_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: BUSINESS_ID,
+          customer_email: email,
+          customer_name: currentCustomerName,
+          estimate_url: currentEstimateUrl,
+          message: document.getElementById('send_message').value,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || result.error || 'Something went wrong.');
+      }
+      statusEl.textContent = `✓ Sent to ${email}`;
+      statusEl.style.color = 'var(--good)';
+    } catch (err) {
+      statusEl.textContent = `Could not send: ${err.message}`;
+      statusEl.style.color = 'var(--bad)';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✉️ Send Email';
+    }
+  }
+
+  // Default the date field to today, then load existing data if editing
+  document.getElementById('proposal_date').valueAsDate = new Date();
+  if (EDIT_ID) {
+    loadForEdit();
+  } else {
+    offerDraftRestore();
+  }
+</script>
+
+</body>
+</html>

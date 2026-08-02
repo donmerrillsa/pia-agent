@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stalled Proposal Audit</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --navy:#0D1B2A;
+    --system-blue:#2E6DA4;
+    --process-blue:#4A89C0;
+    --amber:#F5A623;
+    --light-blue:#DEEAF6;
+    --white:#FFFFFF;
+    --gray:#6B7280;
+    --ink:#1A1A1A;
+    --good:#2F6F4E;
+    --bad:#B33A3A;
+    --line:#E5E7EB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--light-blue);
+    color:var(--ink);
+    font-family:'Inter',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:28px 20px 24px;
+    border-bottom:4px solid var(--amber);
+  }
+  header .wrap{ max-width:820px; margin:0 auto; }
+  header .eyebrow{
+    font-family:'Roboto Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin-bottom:6px;
+    font-weight:700;
+  }
+  header h1{ font-size:26px; margin:0 0 6px; }
+  header p{ margin:0; color:var(--light-blue); font-size:14px; max-width:560px; }
+
+  .wrap{ max-width:820px; margin:0 auto; padding:24px 20px 60px; }
+
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:24px;
+    margin-bottom:20px;
+  }
+  .card.locked{ opacity:.5; pointer-events:none; }
+  .step-label{
+    font-family:'Roboto Mono',monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--system-blue);
+    font-weight:700;
+    margin-bottom:8px;
+  }
+  .card h2{ font-size:18px; margin:0 0 10px; color:var(--navy); }
+  .card p.helper{ font-size:13px; color:var(--gray); margin:0 0 16px; line-height:1.5; }
+
+  input[type="text"], input[type="file"]{
+    width:100%;
+    padding:12px 14px;
+    font-size:15px;
+    border:1.5px solid var(--line);
+    border-radius:5px;
+    font-family:inherit;
+  }
+  input[type="text"]:focus{ outline:none; border-color:var(--system-blue); }
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    padding:12px 22px;
+    border-radius:5px;
+    font-size:14px;
+    font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
+    margin-top:12px;
+  }
+  .btn:disabled{ background:var(--line); color:var(--gray); cursor:not-allowed; }
+  .btn:active:not(:disabled){ background:#0a1620; }
+  .btn.amber{ background:var(--amber); color:var(--navy); }
+  .btn.amber:active:not(:disabled){ background:#e0961a; }
+
+  .status{ font-size:13px; margin-top:10px; min-height:18px; }
+  .status.error{ color:var(--bad); }
+  .status.good{ color:var(--good); }
+
+  .stage-row{
+    display:flex; align-items:center; gap:12px;
+    padding:8px 0; border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .stage-row:last-child{ border-bottom:none; }
+  .stage-row .stage-name{ flex:1; font-weight:600; color:var(--navy); }
+  select{
+    padding:8px 10px; border:1.5px solid var(--line); border-radius:5px;
+    font-family:inherit; font-size:13px; background:#fff;
+  }
+
+  /* Report */
+  #reportArea{ display:none; }
+  .report-header{
+    background:var(--navy); color:#fff; padding:22px 24px; border-radius:8px 8px 0 0;
+  }
+  .report-header .rtag{
+    font-family:'Roboto Mono',monospace; font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--amber); font-weight:700; margin-bottom:6px;
+  }
+  .report-header h2{ font-size:22px; margin:0; }
+  .report-body{
+    background:#fff; border:1px solid var(--line); border-top:none;
+    border-radius:0 0 8px 8px; padding:24px;
+  }
+  .exec-summary{
+    font-size:15px; line-height:1.6; margin-bottom:20px; padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+  }
+  .confidence-badge{
+    display:inline-block; padding:4px 12px; border-radius:20px; font-weight:700;
+    font-size:12px; letter-spacing:.03em; text-transform:uppercase;
+  }
+  .confidence-high{ background:#E4F3EA; color:var(--good); }
+  .confidence-medium{ background:#FDF0DC; color:#96660E; }
+  .confidence-low{ background:#FAE3E3; color:var(--bad); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{
+    background:var(--navy); color:#fff; text-align:left; padding:10px 12px;
+    font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+  }
+  td{ padding:10px 12px; border-bottom:1px solid var(--line); }
+  tr:last-child td{ border-bottom:none; }
+  .stalled-tag{ color:var(--bad); font-weight:600; }
+  .ok-tag{ color:var(--good); }
+
+  .report-footer{
+    margin-top:22px; padding-top:20px; border-top:2px solid var(--line);
+    font-size:14px; color:var(--gray); line-height:1.6;
+  }
+  .report-footer strong{ color:var(--navy); }
+  .cta-line{
+    margin-top:16px; padding:16px; background:var(--light-blue); border-radius:6px;
+    font-size:14px; color:var(--navy);
+  }
+  .cta-line a{ color:var(--system-blue); font-weight:700; text-decoration:none; }
+
+  .privacy-note{
+    font-size:12px; color:var(--gray); text-align:center; margin-top:24px; line-height:1.6;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Pipeline Integrity Agent — Preview Tool</div>
+    <h1>Stalled Proposal Audit</h1>
+    <p>A one-time, private snapshot of what's actually stalled in your pipeline right now. Your file is processed entirely in your browser — nothing is uploaded or stored.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STEP 1: Access code -->
+  <div class="card" id="codeCard">
+    <div class="step-label">Step 1</div>
+    <h2>Enter your access code</h2>
+    <p class="helper">This audit is available by invitation. Enter the one-time code you were given.</p>
+    <input type="text" id="codeInput" placeholder="e.g. AB12-CD34" autocomplete="off">
+    <br>
+    <button class="btn" id="verifyBtn" onclick="verifyCode()">Verify Code</button>
+    <div class="status" id="codeStatus"></div>
+  </div>
+
+  <!-- STEP 2: Upload -->
+  <div class="card locked" id="uploadCard">
+    <div class="step-label">Step 2</div>
+    <h2>Select your pipeline export</h2>
+    <p class="helper">A CSV with three columns: <strong>Stage</strong>, <strong>Amount</strong>, and <strong>Last Activity Date</strong>. No deal names or company names needed — this audit doesn't use them, so leave them out if you'd rather not include them.</p>
+    <input type="file" id="csvInput" accept=".csv">
+    <div class="status" id="uploadStatus"></div>
+  </div>
+
+  <!-- STEP 3: Stage thresholds -->
+  <div class="card locked" id="stageCard" style="display:none;">
+    <div class="step-label">Step 3</div>
+    <h2>Set inactivity thresholds by stage</h2>
+    <p class="helper">Earlier stages can sit longer before they're a concern; later stages go stale faster. Assign each stage found in your file.</p>
+    <div id="stageList"></div>
+    <button class="btn amber" id="runBtn" onclick="runAudit()">Run Audit</button>
+  </div>
+
+  <!-- REPORT -->
+  <div id="reportArea">
+    <div class="report-header">
+      <div class="rtag">Stalled Proposal Audit — One-Time Snapshot</div>
+      <h2 id="reportDate"></h2>
+    </div>
+    <div class="report-body">
+      <div class="exec-summary" id="execSummary"></div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Stage</th><th>Amount</th><th>Days Since Activity</th><th>Status</th></tr>
+        </thead>
+        <tbody id="reportTableBody"></tbody>
+      </table>
+      <div class="report-footer">
+        <strong>This is a one-time snapshot, calculated by hand from a single export.</strong> Pipeline Integrity Agent does this automatically, every morning, without anyone exporting a CSV — every stalled deal flagged the day it crosses the threshold, not whenever someone remembers to check.
+        <div class="cta-line">
+          This audit only uses three columns to keep it simple to run. PIA's real reports go further — rep names, recommended actions per deal, week-over-week trends. <a href="https://pia-sample-reports.netlify.app" target="_blank" rel="noopener">See a real PIA report →</a>
+        </div>
+        <div class="cta-line">
+          Want to see this running live, continuously, on your actual pipeline? <a href="https://buy-mos.com" target="_blank" rel="noopener">Learn about PIA at buy-mos.com →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="privacy-note">Your pipeline data is processed entirely in your browser and is never uploaded, transmitted, or stored anywhere. Only your access code is checked against our server — no deal data is included in that check.</p>
+
+</div>
+
+<script>
+  const VERIFY_ENDPOINT = "/.netlify/functions/verify-audit-code";
+
+  let parsedRows = [];
+  let stageColumns = { stage: null, amount: null, activity: null };
+  const STAGE_THRESHOLDS = { early: 14, mid: 10, late: 7 };
+
+  async function verifyCode() {
+    const code = document.getElementById('codeInput').value.trim();
+    const statusEl = document.getElementById('codeStatus');
+    const btn = document.getElementById('verifyBtn');
+    if (!code) {
+      statusEl.textContent = 'Enter your access code first.';
+      statusEl.className = 'status error';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    statusEl.textContent = '';
+
+    try {
+      const res = await fetch(VERIFY_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.valid) {
+        statusEl.textContent = result.message || 'That code is invalid or has already been used. Contact Don for a new one.';
+        statusEl.className = 'status error';
+        btn.disabled = false;
+        btn.textContent = 'Verify Code';
+        return;
+      }
+
+      statusEl.textContent = '✓ Code verified. You can now select your file.';
+      statusEl.className = 'status good';
+      document.getElementById('codeCard').classList.add('locked');
+      document.getElementById('uploadCard').classList.remove('locked');
+      btn.textContent = 'Verified';
+
+    } catch (err) {
+      statusEl.textContent = 'Could not verify code — check your connection and try again.';
+      statusEl.className = 'status error';
+      btn.disabled = false;
+      btn.textContent = 'Verify Code';
+    }
+  }
+
+  document.getElementById('csvInput').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('uploadStatus');
+    statusEl.textContent = 'Parsing…';
+    statusEl.className = 'status';
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function (results) {
+        const rows = results.data;
+        if (!rows.length) {
+          statusEl.textContent = 'No rows found in that file.';
+          statusEl.className = 'status error';
+          return;
+        }
+
+        const headers = Object.keys(rows[0]);
+        stageColumns.stage = findColumn(headers, ['stage', 'deal stage', 'pipeline stage']);
+        stageColumns.amount = findColumn(headers, ['amount', 'value', 'deal amount', 'price']);
+        stageColumns.activity = findColumn(headers, ['last activity date', 'last activity', 'last touch', 'last touched']);
+
+        if (!stageColumns.stage || !stageColumns.amount || !stageColumns.activity) {
+          statusEl.textContent = 'Could not find Stage, Amount, and Last Activity Date columns. Check your column headers and try again.';
+          statusEl.className = 'status error';
+          return;
+        }
+
+        parsedRows = rows.filter(r => r[stageColumns.stage] && r[stageColumns.amount] && r[stageColumns.activity]);
+        statusEl.textContent = `✓ Found ${parsedRows.length} rows.`;
+        statusEl.className = 'status good';
+
+        buildStageList();
+      },
+      error: function () {
+        statusEl.textContent = 'Could not read that file. Make sure it\'s a valid CSV.';
+        statusEl.className = 'status error';
+      },
+    });
+  });
+
+  function findColumn(headers, candidates) {
+    const lowerHeaders = headers.map(h => h.toLowerCase().trim());
+    for (const c of candidates) {
+      const idx = lowerHeaders.indexOf(c);
+      if (idx !== -1) return headers[idx];
+    }
+    return null;
+  }
+
+  function buildStageList() {
+    const uniqueStages = [...new Set(parsedRows.map(r => r[stageColumns.stage].trim()))];
+    const listEl = document.getElementById('stageList');
+    listEl.innerHTML = '';
+
+    uniqueStages.forEach((stage, i) => {
+      const row = document.createElement('div');
+      row.className = 'stage-row';
+      row.innerHTML = `
+        <div class="stage-name">${escapeHtml(stage)}</div>
+        <select data-stage="${escapeHtml(stage)}" class="stage-select">
+          <option value="early">Early stage (14 days)</option>
+          <option value="mid" selected>Mid stage (10 days)</option>
+          <option value="late">Late stage (7 days)</option>
+        </select>
+      `;
+      listEl.appendChild(row);
+    });
+
+    document.getElementById('stageCard').style.display = 'block';
+    document.getElementById('stageCard').classList.remove('locked');
+    document.getElementById('uploadCard').classList.add('locked');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function parseAmount(val) {
+    const n = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function daysSince(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    const diffMs = new Date() - d;
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+
+  function runAudit() {
+    const selects = document.querySelectorAll('.stage-select');
+    const stageMap = {};
+    selects.forEach(s => { stageMap[s.dataset.stage] = STAGE_THRESHOLDS[s.value]; });
+
+    let totalValue = 0;
+    let stalledValue = 0;
+    const rows = [];
+
+    parsedRows.forEach(r => {
+      const stage = r[stageColumns.stage].trim();
+      const amount = parseAmount(r[stageColumns.amount]);
+      const days = daysSince(r[stageColumns.activity]);
+      const threshold = stageMap[stage] !== undefined ? stageMap[stage] : STAGE_THRESHOLDS.mid;
+      const isStalled = days !== null && days > threshold;
+
+      totalValue += amount;
+      if (isStalled) stalledValue += amount;
+
+      rows.push({ stage, amount, days, isStalled });
+    });
+
+    rows.sort((a, b) => (b.days || 0) - (a.days || 0));
+
+    const stalledCount = rows.filter(r => r.isStalled).length;
+    const pct = totalValue > 0 ? (stalledValue / totalValue) * 100 : 0;
+    let confidence, confClass;
+    if (pct < 10) { confidence = 'High'; confClass = 'confidence-high'; }
+    else if (pct <= 30) { confidence = 'Medium'; confClass = 'confidence-medium'; }
+    else { confidence = 'Low'; confClass = 'confidence-low'; }
+
+    document.getElementById('reportDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    document.getElementById('execSummary').innerHTML = `
+      Your pipeline contains <strong>${rows.length} active deals</strong> totaling <strong>$${totalValue.toLocaleString()}</strong>.
+      <strong>${stalledCount} deals are stalled</strong>, representing <strong>$${stalledValue.toLocaleString()}</strong>
+      (${pct.toFixed(0)}% of pipeline value).
+      Forecast confidence: <span class="confidence-badge ${confClass}">${confidence}</span>
+    `;
+
+    const tbody = document.getElementById('reportTableBody');
+    tbody.innerHTML = rows.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(r.stage)}</td>
+        <td>$${r.amount.toLocaleString()}</td>
+        <td>${r.days !== null ? r.days + ' days' : '—'}</td>
+        <td>${r.isStalled ? '<span class="stalled-tag">Stalled</span>' : '<span class="ok-tag">Active</span>'}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('stageCard').style.display = 'none';
+    document.getElementById('reportArea').style.display = 'block';
+    document.getElementById('reportArea').scrollIntoView({ behavior: 'smooth' });
+  }
+</script>
+
+</body>
+</html>

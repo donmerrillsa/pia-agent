@@ -149,6 +149,8 @@
   tr:last-child td{ border-bottom:none; }
   .stalled-tag{ color:var(--bad); font-weight:600; }
   .ok-tag{ color:var(--good); }
+  .locked-cell{ color:var(--gray); font-style:italic; font-size:12px; }
+  .locked-legend{ font-size:12px; color:var(--gray); margin-bottom:12px; }
 
   .report-footer{
     margin-top:22px; padding-top:20px; border-top:2px solid var(--line);
@@ -215,16 +217,17 @@
     </div>
     <div class="report-body">
       <div class="exec-summary" id="execSummary"></div>
+      <div class="locked-legend">🔒 = shown in PIA's full report, not available from a manual CSV audit</div>
       <table>
         <thead>
-          <tr><th>#</th><th>Stage</th><th>Amount</th><th>Days Since Activity</th><th>Status</th></tr>
+          <tr><th>#</th><th>Deal Name</th><th>Stage</th><th>Amount</th><th>Days Since Activity</th><th>Recommended Action</th><th>Status</th></tr>
         </thead>
         <tbody id="reportTableBody"></tbody>
       </table>
       <div class="report-footer">
         <strong>This is a one-time snapshot, calculated by hand from a single export.</strong> Pipeline Integrity Agent does this automatically, every morning, without anyone exporting a CSV — every stalled deal flagged the day it crosses the threshold, not whenever someone remembers to check.
         <div class="cta-line">
-          This audit only uses three columns to keep it simple to run. PIA's real reports go further — rep names, recommended actions per deal, week-over-week trends. <a href="https://pia-sample-reports.netlify.app" target="_blank" rel="noopener">See a real PIA report →</a>
+          Want to see what those 🔒 columns actually look like filled in — with real deal names and specific per-deal recommendations? <a href="https://pia-sample-reports.netlify.app" target="_blank" rel="noopener">See a real PIA report →</a>
         </div>
         <div class="cta-line">
           Want to see this running live, continuously, on your actual pipeline? <a href="https://buy-mos.com" target="_blank" rel="noopener">Learn about PIA at buy-mos.com →</a>
@@ -424,9 +427,11 @@
     tbody.innerHTML = rows.map((r, i) => `
       <tr>
         <td>${i + 1}</td>
+        <td class="${r.isStalled ? 'locked-cell' : ''}">${r.isStalled ? '🔒 Available in full product' : 'Deal ' + (i + 1)}</td>
         <td>${escapeHtml(r.stage)}</td>
         <td>$${r.amount.toLocaleString()}</td>
         <td>${r.days !== null ? r.days + ' days' : '—'}</td>
+        <td class="locked-cell">${r.isStalled ? '🔒 Available in full product' : '—'}</td>
         <td>${r.isStalled ? '<span class="stalled-tag">Stalled</span>' : '<span class="ok-tag">Active</span>'}</td>
       </tr>
     `).join('');

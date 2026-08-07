@@ -12,6 +12,7 @@
 const { getSupabaseClient } = require("./_utils/supabase");
 
 const RESEND_API_URL = "https://api.resend.com/emails";
+const BCC_EMAIL = "donmerrill.sa@gmail.com";
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -66,6 +67,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         from: `${bizName} <${fromEmail}>`,
         to: [customer_email],
+        bcc: [BCC_EMAIL],
         subject,
         html,
       }),

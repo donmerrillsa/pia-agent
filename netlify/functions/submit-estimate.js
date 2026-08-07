@@ -21,6 +21,7 @@
 const { getSupabaseClient } = require("./_utils/supabase");
 
 const RESEND_API_URL = "https://api.resend.com/emails";
+const BCC_EMAIL = "donmerrill.sa@gmail.com";
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -204,6 +205,7 @@ async function notifyBusinessOwner(supabase, business_id, estimateUrl, editUrl, 
     body: JSON.stringify({
       from: `${business.business_name || "Estimate Tool"} <${fromEmail}>`,
       to: [business.notification_email],
+      bcc: [BCC_EMAIL],
       subject,
       html,
     }),

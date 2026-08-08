@@ -11,6 +11,12 @@
 
 const { getSupabaseClient } = require("./_utils/supabase");
 
+function formatPrice(value) {
+  const num = parseFloat(value);
+  if (isNaN(num)) return esc(value); // fallback: show whatever was there if it's not a clean number
+  return "$" + num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
     return respondHtml(405, renderMessagePage("Method Not Allowed", "This page can only be viewed, not submitted to."));
@@ -135,7 +141,10 @@ function tierCardHtml(label, tier, data, accentColor, estimateId, approvedTier) 
       <div class="tier-meta">
         ${data.seer ? `<span>${esc(data.seer)} SEER2</span>` : ""}
       </div>
-      ${data.price ? `<div class="tier-price" style="color:${esc(accentColor)}">${esc(data.price)}</div>` : ""}
+      ${data.price ? `
+        <div class="tier-price-label">Total Installed Price</div>
+        <div class="tier-price" style="color:${esc(accentColor)}">${formatPrice(data.price)}</div>
+      ` : ""}
       ${data.warranty ? `<div class="tier-warranty">${esc(data.warranty)}</div>` : ""}
       ${featuresListHtml(data.features)}
       ${data.photo_url ? `<div class="tier-photo"><img src="${esc(data.photo_url)}" alt="Photo of ${esc(data.brand || label)}"></div>` : ""}
@@ -253,6 +262,7 @@ function renderEstimatePage(estimate, business) {
   }
   .tier-brand{ font-family:'Zilla Slab',serif; font-size:19px; font-weight:700; color:var(--primary); }
   .tier-meta{ font-size:13px; color:var(--slate); margin:4px 0 10px; }
+  .tier-price-label{ font-size:12px; color:var(--slate); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
   .tier-price{ font-family:'Zilla Slab',serif; font-size:28px; font-weight:700; margin-bottom:8px; }
   .tier-warranty{ font-size:13px; color:var(--slate); margin-bottom:10px; }
   .features{ margin:0 0 14px; padding-left:20px; font-size:14px; }

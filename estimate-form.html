@@ -215,13 +215,22 @@
   }
   .email-block textarea{ min-height:110px; }
   #emailStatus{ min-height:18px; }
-    .duplicate-link{
+    .duplicate-btn{
       display:none;
-      margin-top:8px;
-      font-size:13px;
-      font-weight:600;
+      margin-top:12px;
+      padding:10px 18px;
+      background:#fff;
       color:var(--navy);
-      text-decoration:underline;
+      border:2px solid var(--orange);
+      border-radius:6px;
+      font-weight:700;
+      font-size:14px;
+      text-decoration:none;
+      cursor:pointer;
+    }
+    .duplicate-btn:hover{
+      background:var(--orange);
+      color:#fff;
     }
 </style>
 </head>
@@ -230,8 +239,8 @@
   <header>
     <div class="eyebrow">Pappas Parts &amp; Service, Inc.</div>
     <h1 id="formTitle">New Estimate</h1>
-    <a href="#" id="duplicateLink" class="duplicate-link" style="display:none;">
-      📋 Use this as a starting point for a NEW estimate (won't change this one)
+   <a href="#" id="duplicateLink" class="duplicate-btn" style="display:none;">
+      Use This as a Starting Point for a NEW Estimate
     </a>
   </header>
 

@@ -389,7 +389,7 @@ function renderEstimatePage(estimate, business) {
     </div>
 
     ${(estimate.scope_of_work || estimate.financing_options) ? `
-    <div class="info-grid">
+    <div class="info-grid" style="grid-template-columns: 1fr;">
       ${estimate.scope_of_work ? `
       <div>
         <h2 class="section-title">Scope of Work</h2>

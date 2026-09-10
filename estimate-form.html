@@ -215,6 +215,14 @@
   }
   .email-block textarea{ min-height:110px; }
   #emailStatus{ min-height:18px; }
+    .duplicate-link{
+      display:none;
+      margin-top:8px;
+      font-size:13px;
+      font-weight:600;
+      color:var(--navy);
+      text-decoration:underline;
+    }
 </style>
 </head>
 <body>
@@ -222,6 +230,9 @@
   <header>
     <div class="eyebrow">Pappas Parts &amp; Service, Inc.</div>
     <h1 id="formTitle">New Estimate</h1>
+    <a href="#" id="duplicateLink" class="duplicate-link" style="display:none;">
+      📋 Use this as a starting point for a NEW estimate (won't change this one)
+    </a>
   </header>
 
   <div class="wrap" id="formWrap">
@@ -483,6 +494,7 @@
 
   const params = new URLSearchParams(window.location.search);
   const EDIT_ID = params.get('id');
+      const DUPLICATE_ID = params.get('duplicate');
 
   let currentEstimateUrl = "";
   let currentCustomerName = "";
@@ -562,6 +574,10 @@
     document.getElementById('sendBtn').textContent = 'Save Changes';
     document.title = 'Edit Estimate — Pappas Parts & Service';
 
+        const dupLink = document.getElementById('duplicateLink');
+    dupLink.style.display = 'inline-block';
+    dupLink.href = `?duplicate=${encodeURIComponent(EDIT_ID)}`;
+
     try {
       const res = await fetch(`${GET_ENDPOINT}?id=${encodeURIComponent(EDIT_ID)}`);
       const result = await res.json();
@@ -593,6 +609,35 @@
     }
   }
 
+  async function loadForDuplicate() {
+    document.getElementById('formTitle').textContent = 'New Estimate (from template)';
+    document.title = 'New Estimate — Pappas Parts & Service';
+
+    try {
+      const res = await fetch(`${GET_ENDPOINT}?id=${encodeURIComponent(DUPLICATE_ID)}`);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Could not load that estimate as a template.');
+      }
+      const e = result.estimate;
+
+      document.getElementById('scope_of_work').value = e.scope_of_work || '';
+      document.getElementById('financing_options').value = e.financing_options || '';
+
+      for (const tier of ['good', 'better', 'best']) {
+        document.getElementById(tier + '_brand').value = e[tier + '_brand'] || '';
+        document.getElementById(tier + '_seer').value = e[tier + '_seer'] || '';
+        document.getElementById(tier + '_price').value = e[tier + '_price'] || '';
+        document.getElementById(tier + '_warranty').value = e[tier + '_warranty'] || '';
+        document.getElementById(tier + '_features').value = e[tier + '_features'] || '';
+        setExistingPhoto(tier, e[tier + '_photo_url']);
+      }
+
+      document.getElementById('customer_name').focus();
+    } catch (err) {
+      alert('Could not load that estimate as a template: ' + err.message);
+    }
+  }
   async function handleSend() {
     const requiredOk = document.getElementById('customer_name').value.trim() &&
                         document.getElementById('site_address').value.trim();
@@ -712,14 +757,15 @@
       btn.textContent = '✉️ Send Email';
     }
   }
-
   // Default the date field to today, then load existing data if editing
   document.getElementById('proposal_date').valueAsDate = new Date();
-  if (EDIT_ID) {
-    loadForEdit();
-  } else {
-    offerDraftRestore();
-  }
+ if (EDIT_ID) {
+  loadForEdit();
+} else if (DUPLICATE_ID) {
+  loadForDuplicate();
+} else {
+  offerDraftRestore();
+}
 </script>
 
 </body>

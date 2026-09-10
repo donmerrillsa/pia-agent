@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Estimates — Pappas Parts &amp; Service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#12283C;
+    --orange:#FE8D00;
+    --slate:#4C6478;
+    --paper:#EAF3F7;
+    --card:#FFFFFF;
+    --hairline:#DCE7ED;
+    --ink:#1A1A1A;
+    --good:#2F6F4E;
+    --bad:#B33A3A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:60px;
+  }
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:20px 20px 18px;
+    border-bottom:4px solid var(--orange);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  .eyebrow{
+    font-family:'Roboto Mono',monospace;
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--orange);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Zilla Slab',serif;
+    margin:4px 0 0;
+    font-size:26px;
+  }
+  .back-link{
+    display:inline-block;
+    margin-top:10px;
+    color:#fff;
+    font-size:13px;
+    text-decoration:underline;
+  }
+  .wrap{
+    max-width:900px;
+    margin:24px auto 0;
+    padding:0 20px;
+  }
+  .toolbar{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  .toolbar input[type="text"]{
+    flex:1;
+    min-width:200px;
+    padding:10px 14px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+  }
+  .new-btn{
+    background:var(--orange);
+    color:var(--navy);
+    font-weight:700;
+    padding:10px 18px;
+    border-radius:6px;
+    text-decoration:none;
+    font-size:14px;
+    white-space:nowrap;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--card);
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 1px 3px rgba(18,40,60,0.08);
+  }
+  thead th{
+    text-align:left;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--slate);
+    padding:12px 14px;
+    border-bottom:2px solid var(--hairline);
+  }
+  tbody td{
+    padding:14px;
+    border-bottom:1px solid var(--hairline);
+    font-size:14px;
+    vertical-align:top;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:#F7FBFD; }
+  .cust-name{
+    font-weight:700;
+    color:var(--navy);
+  }
+  .site-addr{
+    color:var(--slate);
+    font-size:13px;
+    margin-top:2px;
+  }
+  .actions{ white-space:nowrap; }
+  .actions a{
+    display:inline-block;
+    margin-right:10px;
+    font-size:13px;
+    font-weight:600;
+    text-decoration:none;
+    color:var(--navy);
+    border-bottom:1px solid var(--navy);
+  }
+  .actions a.template-link{ color:var(--orange); border-bottom-color:var(--orange); }
+  .status-pill{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    padding:3px 8px;
+    border-radius:20px;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+  }
+  .status-active{ background:#E7F3EC; color:var(--good); }
+  .status-expired{ background:#FBEAEA; color:var(--bad); }
+  .empty-state, .loading-state, .error-state{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--slate);
+    font-size:15px;
+  }
+  .error-state{ color:var(--bad); }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="eyebrow">Pappas Parts &amp; Service, Inc.</div>
+    <h1>My Estimates</h1>
+    <a href="/estimate-form.html" class="back-link">&larr; Start a brand-new estimate</a>
+  </header>
+
+  <div class="wrap">
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search by customer name…">
+      <a href="/estimate-form.html" class="new-btn">+ New Estimate</a>
+    </div>
+
+    <div id="loadingState" class="loading-state">Loading your estimates…</div>
+    <div id="errorState" class="error-state" style="display:none;"></div>
+    <div id="emptyState" class="empty-state" style="display:none;">
+      No estimates yet. Create your first one to see it here.
+    </div>
+
+    <table id="estimatesTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="estimatesBody"></tbody>
+    </table>
+  </div>
+
+<script>
+  // Same business_id used throughout the rest of this tool.
+  const BUSINESS_ID = "8758d065-a6ba-48be-8685-98953b01ad6e";
+
+  // NOTE: this endpoint doesn't exist yet — placeholder until list-estimates.js
+  // is built and deployed. Update this once that's live.
+  const LIST_ENDPOINT = "/.netlify/functions/list-estimates";
+
+  let allEstimates = [];
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function isExpired(validThrough) {
+    if (!validThrough) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const expires = new Date(validThrough + 'T00:00:00');
+    return expires < today;
+  }
+
+  function renderRows(estimates) {
+    const tbody = document.getElementById('estimatesBody');
+    tbody.innerHTML = '';
+
+    if (estimates.length === 0) {
+      document.getElementById('estimatesTable').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('estimatesTable').style.display = 'table';
+
+    estimates.forEach(function(e) {
+      const tr = document.createElement('tr');
+      const expired = isExpired(e.expires_date);
+
+      tr.innerHTML =
+        '<td>' +
+          '<div class="cust-name">' + escapeHtml(e.customer_name || '(no name)') + '</div>' +
+          '<div class="site-addr">' + escapeHtml(e.site_address || '') + '</div>' +
+        '</td>' +
+        '<td>' + formatDate(e.proposal_date) + '</td>' +
+        '<td><span class="status-pill ' + (expired ? 'status-expired' : 'status-active') + '">' +
+          (expired ? 'Expired' : 'Active') +
+        '</span></td>' +
+        '<td class="actions">' +
+          '<a href="/estimate/' + e.id + '" target="_blank">View</a>' +
+          '<a href="/estimate-form.html?id=' + e.id + '">Edit</a>' +
+          '<a href="/estimate-form.html?duplicate=' + e.id + '" class="template-link">Use as Template</a>' +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('searchBox').addEventListener('input', function(e) {
+    const q = e.target.value.toLowerCase();
+    const filtered = allEstimates.filter(function(est) {
+      return (est.customer_name || '').toLowerCase().includes(q);
+    });
+    renderRows(filtered);
+  });
+
+  async function loadEstimates() {
+    try {
+      const res = await fetch(LIST_ENDPOINT + '?business_id=' + encodeURIComponent(BUSINESS_ID));
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Could not load estimates.');
+      }
+      allEstimates = result.estimates || [];
+      // Most recent first.
+      allEstimates.sort(function(a, b) {
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+      document.getElementById('loadingState').style.display = 'none';
+      renderRows(allEstimates);
+    } catch (err) {
+      document.getElementById('loadingState').style.display = 'none';
+      const errEl = document.getElementById('errorState');
+      errEl.style.display = 'block';
+      errEl.textContent = 'Could not load estimates: ' + err.message;
+    }
+  }
+
+  loadEstimates();
+</script>
+
+</body>
+</html>

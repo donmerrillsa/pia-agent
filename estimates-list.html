@@ -67,6 +67,8 @@
     gap:12px;
     margin-bottom:20px;
   }
+  .status-template{ background:#EAECEE; color:var(--slate); 
+  }
   .stat-card{
     background:var(--card);
     border-radius:8px;
@@ -309,6 +311,7 @@
   }
 
   function statusForRow(e) {
+    if (e.id === TEMPLATE_ID) return { label: 'Template', cls: 'status-template' };
     if (e.approved_tier) return { label: 'Approved', cls: 'status-approved' };
     if (isExpired(e.expires_date)) return { label: 'Expired', cls: 'status-expired' };
     return { label: 'Awaiting Response', cls: 'status-active' };

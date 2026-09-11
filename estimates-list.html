@@ -17,6 +17,7 @@
     --ink:#1A1A1A;
     --good:#2F6F4E;
     --bad:#B33A3A;
+    --wait:#8A6D00;
   }
   *{box-sizing:border-box;}
   body{
@@ -59,6 +60,41 @@
     max-width:900px;
     margin:24px auto 0;
     padding:0 20px;
+  }
+  .stats-bar{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:12px;
+    margin-bottom:20px;
+  }
+  .stat-card{
+    background:var(--card);
+    border-radius:8px;
+    padding:14px 16px;
+    box-shadow:0 1px 3px rgba(18,40,60,0.08);
+    border-left:4px solid var(--hairline);
+  }
+  .stat-card.approved{ border-left-color:var(--good); }
+  .stat-card.waiting{ border-left-color:var(--wait); }
+  .stat-card.expired{ border-left-color:var(--bad); }
+  .stat-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--slate);
+    font-weight:700;
+  }
+  .stat-count{
+    font-family:'Zilla Slab',serif;
+    font-size:26px;
+    font-weight:700;
+    color:var(--navy);
+    margin-top:2px;
+  }
+  .stat-sub{
+    font-size:12px;
+    color:var(--slate);
+    margin-top:2px;
   }
   .toolbar{
     display:flex;
@@ -139,8 +175,9 @@
     text-transform:uppercase;
     letter-spacing:0.4px;
   }
-  .status-active{ background:#E7F3EC; color:var(--good); }
+  .status-active{ background:#FDF5E0; color:var(--wait); }
   .status-expired{ background:#FBEAEA; color:var(--bad); }
+  .status-approved{ background:#E7F3EC; color:var(--good); }
   .empty-state, .loading-state, .error-state{
     text-align:center;
     padding:60px 20px;
@@ -148,6 +185,9 @@
     font-size:15px;
   }
   .error-state{ color:var(--bad); }
+  @media (max-width:640px){
+    .stats-bar{ grid-template-columns:1fr; }
+  }
 </style>
 </head>
 <body>
@@ -159,6 +199,22 @@
   </header>
 
   <div class="wrap">
+    <div class="stats-bar" id="statsBar" style="display:none;">
+      <div class="stat-card approved">
+        <div class="stat-label">Approved</div>
+        <div class="stat-count" id="statApprovedCount">0</div>
+        <div class="stat-sub" id="statApprovedTotal"></div>
+      </div>
+      <div class="stat-card waiting">
+        <div class="stat-label">Awaiting Response</div>
+        <div class="stat-count" id="statWaitingCount">0</div>
+      </div>
+      <div class="stat-card expired">
+        <div class="stat-label">Expired, No Response</div>
+        <div class="stat-count" id="statExpiredCount">0</div>
+      </div>
+    </div>
+
     <div class="toolbar">
       <input type="text" id="searchBox" placeholder="Search by customer name…">
       <a href="/estimate-form.html" class="new-btn">+ New Estimate</a>
@@ -184,12 +240,12 @@
   </div>
 
 <script>
-  // Same business_id used throughout the rest of this tool.
   const BUSINESS_ID = "8758d065-a6ba-48be-8685-98953b01ad6e";
-
-  // NOTE: this endpoint doesn't exist yet — placeholder until list-estimates.js
-  // is built and deployed. Update this once that's live.
   const LIST_ENDPOINT = "/.netlify/functions/list-estimates";
+
+  // Rows we never want counted in stats or shown as a "real" job —
+  // just the reusable template row, identified by its exact ID.
+  const TEMPLATE_ID = "f6ccb342-82c0-499b-bb54-2a4373f08995";
 
   let allEstimates = [];
 
@@ -205,12 +261,57 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
+  function formatMoney(num) {
+    return num.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
   function isExpired(validThrough) {
     if (!validThrough) return false;
     const today = new Date();
     today.setHours(0,0,0,0);
     const expires = new Date(validThrough + 'T00:00:00');
     return expires < today;
+  }
+
+  // Approved tier's price, parsed into a real number regardless of how
+  // it was typed (with or without commas/decimals).
+  function getApprovedPrice(e) {
+    if (!e.approved_tier) return null;
+    const raw = e[e.approved_tier + '_price'];
+    if (!raw) return null;
+    const num = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
+    return isNaN(num) ? null : num;
+  }
+
+  function computeStats(estimates) {
+    // The template row isn't a real job — leave it out of every count.
+    const real = estimates.filter(function(e) { return e.id !== TEMPLATE_ID; });
+
+    let approvedCount = 0, approvedTotal = 0, waitingCount = 0, expiredCount = 0;
+
+    real.forEach(function(e) {
+      if (e.approved_tier) {
+        approvedCount++;
+        const price = getApprovedPrice(e);
+        if (price) approvedTotal += price;
+      } else if (isExpired(e.expires_date)) {
+        expiredCount++;
+      } else {
+        waitingCount++;
+      }
+    });
+
+    document.getElementById('statApprovedCount').textContent = approvedCount;
+    document.getElementById('statApprovedTotal').textContent = approvedTotal > 0 ? formatMoney(approvedTotal) + ' total' : '';
+    document.getElementById('statWaitingCount').textContent = waitingCount;
+    document.getElementById('statExpiredCount').textContent = expiredCount;
+    document.getElementById('statsBar').style.display = 'grid';
+  }
+
+  function statusForRow(e) {
+    if (e.approved_tier) return { label: 'Approved', cls: 'status-approved' };
+    if (isExpired(e.expires_date)) return { label: 'Expired', cls: 'status-expired' };
+    return { label: 'Awaiting Response', cls: 'status-active' };
   }
 
   function renderRows(estimates) {
@@ -228,7 +329,7 @@
 
     estimates.forEach(function(e) {
       const tr = document.createElement('tr');
-      const expired = isExpired(e.expires_date);
+      const status = statusForRow(e);
 
       tr.innerHTML =
         '<td>' +
@@ -236,9 +337,7 @@
           '<div class="site-addr">' + escapeHtml(e.site_address || '') + '</div>' +
         '</td>' +
         '<td>' + formatDate(e.proposal_date) + '</td>' +
-        '<td><span class="status-pill ' + (expired ? 'status-expired' : 'status-active') + '">' +
-          (expired ? 'Expired' : 'Active') +
-        '</span></td>' +
+        '<td><span class="status-pill ' + status.cls + '">' + status.label + '</span></td>' +
         '<td class="actions">' +
           '<a href="/estimate/' + e.id + '" target="_blank">View</a>' +
           '<a href="/estimate-form.html?id=' + e.id + '">Edit</a>' +
@@ -264,11 +363,11 @@
         throw new Error(result.error || 'Could not load estimates.');
       }
       allEstimates = result.estimates || [];
-      // Most recent first.
       allEstimates.sort(function(a, b) {
         return new Date(b.created_at) - new Date(a.created_at);
       });
       document.getElementById('loadingState').style.display = 'none';
+      computeStats(allEstimates);
       renderRows(allEstimates);
     } catch (err) {
       document.getElementById('loadingState').style.display = 'none';

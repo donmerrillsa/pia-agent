@@ -17,7 +17,7 @@ exports.handler = async (event) => {
   try {
     const { data: estimates, error } = await supabase
       .from("estimates")
-      .select("id, customer_name, site_address, proposal_date, expires_date, created_at")
+      .select("id, customer_name, site_address, proposal_date, expires_date, created_at, approved_tier, approved_at, good_price, better_price, best_price")
       .eq("business_id", businessId)
       .order("created_at", { ascending: false });
 

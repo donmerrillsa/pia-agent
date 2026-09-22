@@ -66,7 +66,7 @@ const ECV_OPPORTUNITY_LABELS = [
 ];
 
 function leadingDigit(answerText) {
-  const m = String(answerText || "").match(/^\s*([1-4])/);
+  const m = String(answerText || "").match(/^\s*([0-4])/);
   if (!m) throw new Error(`Could not find a leading 1-4 digit in answer: ${JSON.stringify(answerText)}`);
   return parseInt(m[1], 10);
 }

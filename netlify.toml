@@ -9,6 +9,10 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
+
+[functions."generate-audit-report"]
+  included_files = ["netlify/functions/templates/*.docx"]
+
 # ── Scheduled function — Weekly Pipeline Integrity Report ────
 # Runs every Friday at 12:00 PM UTC = 7:00 AM CDT
 [functions."scheduled-pipeline"]

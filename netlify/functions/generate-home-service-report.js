@@ -73,7 +73,7 @@ exports.handler = async (event) => {
         docxBase64: filledBuffer.toString("base64"),
         filename: `${safeBusiness}_Home_Service_Revenue_Leak_Audit_Report.docx`,
         startHereBase64: startHereBuffer.toString("base64"),
-        startHereFilename: `${safeBusiness}_Start_Here_First_Two_Weeks.docx`,
+        startHereFilename: `${safeBusiness}_Start_Here_Guide.docx`,
         trackerBase64: trackerBuffer.toString("base64"),
         trackerFilename: `${safeBusiness}_Tracking_Sheet.xlsx`,
         startMessage: startMessage(results.primary, answers.business_name).message,

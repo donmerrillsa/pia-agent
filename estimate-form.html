@@ -259,6 +259,11 @@
           <input type="text" id="customer_name" name="customer_name" required>
         </div>
         <div class="field">
+          <label for="customer_email">Customer Email</label>
+          <input type="email" id="customer_email" name="customer_email" autocomplete="email" placeholder="customer@example.com">
+          <p>Optional if sharing by text. After saving, review the email and click Send Email to Customer.</p>
+        </div>
+        <div class="field">
           <label for="site_address">Site Address</label>
           <input type="text" id="site_address" name="site_address" required>
         </div>
@@ -433,13 +438,13 @@
         <label for="send_message">Message</label>
         <textarea id="send_message"></textarea>
       </div>
-      <button type="button" class="send-btn" id="emailCustomerBtn" onclick="emailCustomer()">✉️ Send Email</button>
-      <p id="emailStatus"></p>
+      <button type="button" class="send-btn" id="emailCustomerBtn" onclick="emailCustomer()">✉️ Send Email to Customer</button>
+      <p id="emailStatus" role="status" aria-live="polite"></p>
     </div>
   </div>
 
   <div class="send-bar" id="sendBar">
-    <button type="button" class="send-btn" id="sendBtn" onclick="handleSend()">Send Estimate</button>
+    <button type="button" class="send-btn" id="sendBtn" onclick="handleSend()">Save Estimate</button>
   </div>
 
 <script>
@@ -450,7 +455,7 @@
 
   const DRAFT_KEY = 'pia_estimate_draft';
   const TEXT_FIELD_IDS = [
-    'customer_name', 'site_address', 'proposal_date', 'current_system', 'diagnosis', 'technician',
+    'customer_name', 'customer_email', 'site_address', 'proposal_date', 'current_system', 'diagnosis', 'technician',
     'scope_of_work', 'financing_options', 'expires_date',
     'good_brand', 'good_seer', 'good_price', 'good_warranty', 'good_features',
     'better_brand', 'better_seer', 'better_price', 'better_warranty', 'better_features',
@@ -620,6 +625,9 @@
   }
 
   async function loadForDuplicate() {
+    // A template never supplies the recipient for a new customer.
+    document.getElementById('customer_email').value = '';
+    document.getElementById('send_to_email').value = '';
     document.getElementById('formTitle').textContent = 'New Estimate (from template)';
     document.title = 'New Estimate — Pappas Parts & Service';
 
@@ -652,13 +660,20 @@
     const requiredOk = document.getElementById('customer_name').value.trim() &&
                         document.getElementById('site_address').value.trim();
     if (!requiredOk) {
-      alert('Please fill in at least the customer name and site address before sending.');
+      alert('Please fill in at least the customer name and site address before saving.');
+      return;
+    }
+
+    const customerEmail = document.getElementById('customer_email');
+    customerEmail.value = customerEmail.value.trim();
+    if (!customerEmail.checkValidity()) {
+      customerEmail.reportValidity();
       return;
     }
 
     const btn = document.getElementById('sendBtn');
     btn.disabled = true;
-    btn.textContent = EDIT_ID ? 'Saving…' : 'Sending…';
+    btn.textContent = 'Saving…';
 
     const payload = {
       business_id: BUSINESS_ID,
@@ -695,7 +710,7 @@
     } catch (err) {
       alert('Could not save this estimate: ' + err.message + '\n\nPlease check your connection and try again.');
       btn.disabled = false;
-      btn.textContent = EDIT_ID ? 'Save Changes' : 'Send Estimate';
+      btn.textContent = EDIT_ID ? 'Save Changes' : 'Save Estimate';
     }
   }
 
@@ -705,6 +720,10 @@
 
     currentEstimateUrl = estimateUrl;
     currentCustomerName = customerName || '';
+
+    document.getElementById('send_to_email').value = document.getElementById('customer_email').value.trim();
+    document.getElementById('emailStatus').textContent = 'Customer has not been emailed. Send the email below or copy the link to share by text.';
+    document.getElementById('emailStatus').style.color = '';
 
     document.getElementById('linkBox').textContent = estimateUrl;
     document.getElementById('send_message').value =
@@ -735,6 +754,12 @@
       alert("Please enter the customer's email address first.");
       return;
     }
+    const recipient = document.getElementById('send_to_email');
+    recipient.value = email;
+    if (!recipient.checkValidity()) {
+      recipient.reportValidity();
+      return;
+    }
     const btn = document.getElementById('emailCustomerBtn');
     const statusEl = document.getElementById('emailStatus');
     btn.disabled = true;
@@ -757,14 +782,14 @@
       if (!res.ok || !result.success) {
         throw new Error(result.message || result.error || 'Something went wrong.');
       }
-      statusEl.textContent = `✓ Sent to ${email}`;
+      statusEl.textContent = `✓ Email accepted for sending to ${email}.`;
       statusEl.style.color = 'var(--good)';
     } catch (err) {
-      statusEl.textContent = `Could not send: ${err.message}`;
+      statusEl.textContent = `Email was not confirmed sent: ${err.message}. Your estimate is saved; you can copy its link or retry the email.`;
       statusEl.style.color = 'var(--bad)';
     } finally {
       btn.disabled = false;
-      btn.textContent = '✉️ Send Email';
+      btn.textContent = '✉️ Send Email to Customer';
     }
   }
   // Default the date field to today, then load existing data if editing

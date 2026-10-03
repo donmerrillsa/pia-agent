@@ -32,6 +32,14 @@ exports.handler = async (event) => {
     return respond(400, { error: "Missing business_id, customer_email, or estimate_url." });
   }
 
+  // Accept one address only; do not allow a pasted recipient list or line breaks.
+  if (typeof customer_email !== 'string' ||
+      /[\r\n]/.test(customer_email) ||
+      !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(customer_email.trim())) {
+    return respond(400, { success: false, error: 'Please enter one valid customer email address.' });
+  }
+  const recipientEmail = customer_email.trim();
+
   const resendKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.ESTIMATE_FROM_EMAIL || process.env.REPORT_FROM_EMAIL || "pia@buy-mos.com";
 
@@ -66,7 +74,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         from: `${bizName} <${fromEmail}>`,
-        to: [customer_email],
+        to: [recipientEmail],
         bcc: [BCC_EMAIL],
         subject,
         html,
@@ -83,7 +91,7 @@ exports.handler = async (event) => {
     return respond(200, {
       success: true,
       resend_id: resendData.id,
-      message: `Estimate emailed to ${customer_email}`,
+      message: `Email accepted for sending to ${recipientEmail}`,
     });
 
   } catch (err) {

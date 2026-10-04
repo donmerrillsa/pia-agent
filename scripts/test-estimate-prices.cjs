@@ -16,4 +16,5 @@ assert.equal(context.formatPrice('$13,150.00'), '$13,150.00');
 assert.equal(context.formatPrice('9000'), '$9,000.00');
 assert.equal(context.formatPrice('16750.00'), '$16,750.00');
 assert.equal(context.formatPrice('13,15'), 'Price requires confirmation');
+for (const v of ['13115', '13,115', '$13,115']) assert.equal(require('../price-utils').formatPrice(v), '$13,115.00');
 console.log('Price normalization and customer display regression checks passed.');

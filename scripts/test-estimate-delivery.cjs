@@ -37,8 +37,17 @@ async function run() {
   await vm.runInContext('handleSend()', f.ctx);
   assert.equal(f.calls.length, 0, 'Invalid recipient must stop saving');
   f.element('customer_email').value = ' customer@example.com ';
+  for (const tier of ['good', 'better', 'best']) {
+    f.element(tier + '_price').value = '13,115';
+    vm.runInContext(`formatPriceField('${tier}')`, f.ctx);
+    assert.equal(f.element(tier + '_price').value, '$13,115.00');
+  }
   await vm.runInContext('handleSend()', f.ctx);
   assert.equal(f.calls.length, 1, 'Save alone must not email customer');
+  for (const tier of ['good', 'better', 'best']) {
+    assert.equal(f.calls[0].body[tier].price, '13115.00');
+    assert.equal(f.element(tier + '_price').value, '$13,115.00');
+  }
   assert.equal(f.element('send_to_email').value, 'customer@example.com');
   assert.match(f.element('emailStatus').textContent, /has not been emailed/);
   await vm.runInContext('emailCustomer()', f.ctx);

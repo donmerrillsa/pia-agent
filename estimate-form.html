@@ -497,6 +497,7 @@
         const el = document.getElementById(id);
         if (el && saved[id]) el.value = saved[id];
       });
+      ['good', 'better', 'best'].forEach(tier => formatPriceField(tier));
     } else {
       clearDraft();
     }
@@ -565,7 +566,7 @@
     return {
       brand: document.getElementById(tier + '_brand').value,
       seer: document.getElementById(tier + '_seer').value,
-      price: document.getElementById(tier + '_price').value,
+      price: EstimatePrices.normalizePrice(document.getElementById(tier + '_price').value),
       warranty: document.getElementById(tier + '_warranty').value,
       features: document.getElementById(tier + '_features').value,
       photo_data_url: getPhotoDataUrl(tier),
@@ -615,7 +616,8 @@
       for (const tier of ['good', 'better', 'best']) {
         document.getElementById(tier + '_brand').value = e[tier + '_brand'] || '';
         document.getElementById(tier + '_seer').value = e[tier + '_seer'] || '';
-        document.getElementById(tier + '_price').value = e[tier + '_price'] || '';
+        document.getElementById(tier + '_price').value = e[tier + '_price'] ?? '';
+        formatPriceField(tier);
         document.getElementById(tier + '_warranty').value = e[tier + '_warranty'] || '';
         document.getElementById(tier + '_features').value = e[tier + '_features'] || '';
         setExistingPhoto(tier, e[tier + '_photo_url']);
@@ -646,7 +648,8 @@
       for (const tier of ['good', 'better', 'best']) {
         document.getElementById(tier + '_brand').value = e[tier + '_brand'] || '';
         document.getElementById(tier + '_seer').value = e[tier + '_seer'] || '';
-        document.getElementById(tier + '_price').value = e[tier + '_price'] || '';
+        document.getElementById(tier + '_price').value = e[tier + '_price'] ?? '';
+        formatPriceField(tier);
         document.getElementById(tier + '_warranty').value = e[tier + '_warranty'] || '';
         document.getElementById(tier + '_features').value = e[tier + '_features'] || '';
         setExistingPhoto(tier, e[tier + '_photo_url']);
@@ -677,7 +680,7 @@
       try {
         field.setCustomValidity('');
         const price = EstimatePrices.normalizePrice(field.value);
-        if (price !== null) field.value = price;
+        field.value = EstimatePrices.formatPrice(price);
       } catch (err) {
         field.setCustomValidity(err.message);
         field.reportValidity();
@@ -808,6 +811,24 @@
       btn.textContent = '✉️ Send Email to Customer';
     }
   }
+  function formatPriceField(tier, reportError = false) {
+    const field = document.getElementById(tier + '_price');
+    try {
+      field.setCustomValidity('');
+      field.value = EstimatePrices.formatPrice(field.value);
+      return true;
+    } catch (err) {
+      field.setCustomValidity(err.message);
+      if (reportError) field.reportValidity();
+      return false;
+    }
+  }
+  ['good', 'better', 'best'].forEach(tier => {
+    const field = document.getElementById(tier + '_price');
+    field.addEventListener('blur', () => { formatPriceField(tier, true); saveDraft(); });
+    field.addEventListener('input', () => field.setCustomValidity(''));
+  });
+
   // Default the date field to today, then load existing data if editing
   document.getElementById('proposal_date').valueAsDate = new Date();
  if (EDIT_ID) {

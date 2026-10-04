@@ -12,7 +12,13 @@
     if (!Number.isSafeInteger(cents) || cents < 0) throw new Error('Price is outside the supported range.');
     return (cents / 100).toFixed(2);
   }
-  const api = { normalizePrice };
+  function formatPrice(value) {
+    const normalized = normalizePrice(value);
+    return normalized === null ? '' : '$' + Number(normalized).toLocaleString('en-US', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+  }
+  const api = { normalizePrice, formatPrice };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.EstimatePrices = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

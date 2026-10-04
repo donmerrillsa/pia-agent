@@ -11,10 +11,15 @@
 
 const { getSupabaseClient } = require("./_utils/supabase");
 
+const { normalizePrice } = require("../../price-utils");
 function formatPrice(value) {
-  const num = parseFloat(value);
-  if (isNaN(num)) return esc(value); // fallback: show whatever was there if it's not a clean number
-  return "$" + num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  try {
+    const normalized = normalizePrice(value);
+    if (normalized === null) return "";
+    return "$" + Number(normalized).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } catch {
+    return "Price requires confirmation";
+  }
 }
 
 exports.handler = async (event) => {

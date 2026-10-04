@@ -1,0 +1,19 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const { normalizePrice: p } = require('../price-utils');
+for (const input of ['13150', '13,150', '$13,150.00', '  $13,150.00  ', 13150]) assert.equal(p(input), '13150.00');
+for (const input of ['9000', '16750.00', '0', '0.01', '13.1']) assert.equal(p(input), Number(input).toFixed(2));
+for (const input of ['13,15', '13,150oops', '1e4', '-1', 'NaN', 'Infinity', '13.123', '13.150,00']) assert.throws(() => p(input));
+assert.equal(p(''), null);
+// Test the actual customer formatter, including existing records with commas.
+const source = fs.readFileSync(require.resolve('../netlify/functions/view-estimate'), 'utf8');
+const formatter = source.slice(source.indexOf('function formatPrice'), source.indexOf('exports.handler'));
+const context = { normalizePrice: p };
+vm.createContext(context); vm.runInContext(formatter, context);
+assert.equal(context.formatPrice('13,150'), '$13,150.00');
+assert.equal(context.formatPrice('$13,150.00'), '$13,150.00');
+assert.equal(context.formatPrice('9000'), '$9,000.00');
+assert.equal(context.formatPrice('16750.00'), '$16,750.00');
+assert.equal(context.formatPrice('13,15'), 'Price requires confirmation');
+console.log('Price normalization and customer display regression checks passed.');

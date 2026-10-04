@@ -447,6 +447,7 @@
     <button type="button" class="send-btn" id="sendBtn" onclick="handleSend()">Save Estimate</button>
   </div>
 
+<script src="/price-utils.js"></script>
 <script>
   const BUSINESS_ID = "8758d065-a6ba-48be-8685-98953b01ad6e"; // from estimate_businesses table
   const SUBMIT_ENDPOINT = "/.netlify/functions/submit-estimate";
@@ -669,6 +670,21 @@
     if (!customerEmail.checkValidity()) {
       customerEmail.reportValidity();
       return;
+    }
+
+    for (const tier of ['good', 'better', 'best']) {
+      const field = document.getElementById(tier + '_price');
+      try {
+        field.setCustomValidity('');
+        const price = EstimatePrices.normalizePrice(field.value);
+        if (price !== null) field.value = price;
+      } catch (err) {
+        field.setCustomValidity(err.message);
+        field.reportValidity();
+        field.focus();
+        field.addEventListener('input', () => field.setCustomValidity(''), { once: true });
+        return;
+      }
     }
 
     const btn = document.getElementById('sendBtn');

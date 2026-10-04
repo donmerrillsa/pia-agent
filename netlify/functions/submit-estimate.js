@@ -20,6 +20,8 @@
 
 const { getSupabaseClient } = require("./_utils/supabase");
 
+const { normalizePrice } = require("../../price-utils");
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 const BCC_EMAIL = "donmerrill.sa@gmail.com";
 
@@ -39,6 +41,13 @@ exports.handler = async (event) => {
 
   if (!business_id) {
     return respond(400, { error: "Missing business_id." });
+  }
+
+  // Reject invalid prices before uploads, database writes, or notifications.
+  const prices = {};
+  for (const tier of ["good", "better", "best"]) {
+    try { prices[tier] = normalizePrice(body[tier]?.price); }
+    catch (err) { return respond(400, { success: false, error: `${tier}: ${err.message}`, message: `${tier}: ${err.message}` }); }
   }
 
   const isEdit = Boolean(id);
@@ -75,21 +84,21 @@ exports.handler = async (event) => {
 
       good_brand: body.good?.brand || null,
       good_seer: body.good?.seer || null,
-      good_price: body.good?.price || null,
+      good_price: prices.good,
       good_warranty: body.good?.warranty || null,
       good_features: body.good?.features || null,
       good_photo_url: photoUrls.good || null,
 
       better_brand: body.better?.brand || null,
       better_seer: body.better?.seer || null,
-      better_price: body.better?.price || null,
+      better_price: prices.better,
       better_warranty: body.better?.warranty || null,
       better_features: body.better?.features || null,
       better_photo_url: photoUrls.better || null,
 
       best_brand: body.best?.brand || null,
       best_seer: body.best?.seer || null,
-      best_price: body.best?.price || null,
+      best_price: prices.best,
       best_warranty: body.best?.warranty || null,
       best_features: body.best?.features || null,
       best_photo_url: photoUrls.best || null,

@@ -233,6 +233,7 @@
         <tr>
           <th>Customer</th>
           <th>Proposal Date</th>
+          <th>Valid Through</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -314,6 +315,7 @@
     if (e.id === TEMPLATE_ID) return { label: 'Template', cls: 'status-template' };
     if (e.approved_tier) return { label: 'Approved', cls: 'status-approved' };
     if (isExpired(e.expires_date)) return { label: 'Expired', cls: 'status-expired' };
+    if (!e.expires_date) return { label: 'Awaiting Response — No expiration set', cls: 'status-active' };
     return { label: 'Awaiting Response', cls: 'status-active' };
   }
 
@@ -340,6 +342,7 @@
           '<div class="site-addr">' + escapeHtml(e.site_address || '') + '</div>' +
         '</td>' +
         '<td>' + formatDate(e.proposal_date) + '</td>' +
+        '<td>' + (e.expires_date ? formatDate(e.expires_date) : (e.id === TEMPLATE_ID ? '—' : 'No expiration set')) + '</td>' +
         '<td><span class="status-pill ' + status.cls + '">' + status.label + '</span></td>' +
         '<td class="actions">' +
           '<a href="/estimate/' + e.id + '" target="_blank">View</a>' +

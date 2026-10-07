@@ -118,6 +118,11 @@ async function fillReport(templateBuffer, answers, results) {
   const parts = splitParagraphs(xml);
 
   const { primary, secondary, strongest, scores, pcts } = results;
+  const maxes = results.maxes || { [BUCKETS.AC]: 24, [BUCKETS.DR]: 24, [BUCKETS.ECV]: 24 };
+  // Each area's maximum is filled in, because Attract & Convert is out of 36
+  // when the missed-call questions were answered and the others are out of 24.
+  const withMax = (t, placeholder, bucket) => t.replace(`${placeholder}/24`, `${placeholder}/${maxes[bucket]}`);
+  const mc = results.missedCalls;
   const ptsPct = (b) => [String(scores[b]), `${Math.round(pcts[b] * 100)}%`];
   const [pPts, pPct] = ptsPct(primary);
   const [sPts, sPct] = ptsPct(secondary);
@@ -140,8 +145,12 @@ async function fillReport(templateBuffer, answers, results) {
       part.xml = setParagraphText(part.xml, text.replace("[Your Name]", answers.prepared_by || ""));
     } else if (inFirstTable && text.includes("[Date]")) {
       part.xml = setParagraphText(part.xml, text.replace("[Date]", answers.audit_date || ""));
+    } else if (text.includes("[MISSED_CALL_LABEL]")) {
+      part.xml = mc ? setParagraphText(part.xml, "Missed calls") : "";
+    } else if (text.includes("[MISSED_CALL_NOTE]")) {
+      part.xml = mc ? setParagraphText(part.xml, mc.note) : "";
     } else if (text.includes("Your score in this area was [Points]/24")) {
-      part.xml = setParagraphText(part.xml, text.replace("[Points]", pPts).replace("[Percentage]", pPct));
+      part.xml = setParagraphText(part.xml, withMax(text, "[Points]", primary).replace("[Points]", pPts).replace("[Percentage]", pPct));
     } else if (text.includes("[Secondary Revenue Leak]")) {
       part.xml = setParagraphText(
         part.xml,
@@ -153,19 +162,19 @@ async function fillReport(templateBuffer, answers, results) {
         text.replace("[Strongest Area]", strongest).replace("[Points]", stPts).replace("[Percentage]", stPct)
       );
     } else if (text.includes("[Attract Points]") || text.includes("[Attract %]") || text.includes("[Attract interpretation]")) {
-      const t = text
+      const t = withMax(text, "[Attract Points]", BUCKETS.AC)
         .replace("[Attract Points]", acPts)
         .replace("[Attract %]", acPct)
         .replace("[Attract interpretation]", interpret(pcts[BUCKETS.AC]));
       part.xml = setParagraphText(part.xml, t);
     } else if (text.includes("[Retain Points]") || text.includes("[Retain %]") || text.includes("[Retention interpretation]")) {
-      const t = text
+      const t = withMax(text, "[Retain Points]", BUCKETS.DR)
         .replace("[Retain Points]", erPts)
         .replace("[Retain %]", erPct)
         .replace("[Retention interpretation]", interpret(pcts[BUCKETS.DR]));
       part.xml = setParagraphText(part.xml, t);
     } else if (text.includes("[Value Points]") || text.includes("[Value %]") || text.includes("[Value interpretation]")) {
-      const t = text
+      const t = withMax(text, "[Value Points]", BUCKETS.ECV)
         .replace("[Value Points]", ecvPts)
         .replace("[Value %]", ecvPct)
         .replace("[Value interpretation]", interpret(pcts[BUCKETS.ECV]));

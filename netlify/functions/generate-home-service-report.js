@@ -51,6 +51,27 @@ exports.handler = async (event) => {
 
   try {
     const results = computeScores(answers);
+    const scoreSummary = {
+      primary: results.primary,
+      secondary: results.secondary,
+      strongest: results.strongest,
+      scores: results.scores,
+      maxes: results.maxes,
+      pcts: results.pcts,
+      ownerChose: results.ownerChose,
+      lowest: results.lowest,
+      missedCalls: results.missedCalls
+        ? { score: results.missedCalls.score, max: results.missedCalls.max, gap: results.missedCalls.gap,
+            emailLine: results.missedCalls.emailLine, findings: results.missedCalls.findings }
+        : null,
+    };
+
+    // Score-only mode: used to fill the "Audit Scores" tab for past responses.
+    // Builds no documents.
+    if (answers.score_only) {
+      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify(scoreSummary) };
+    }
+
     const templatePath = path.join(__dirname, "templates", TEMPLATE_FILES[results.primary]);
     const templateBuffer = fs.readFileSync(templatePath);
 
@@ -64,12 +85,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        primary: results.primary,
-        secondary: results.secondary,
-        strongest: results.strongest,
-        scores: results.scores,
-        ownerChose: results.ownerChose,
-        lowest: results.lowest,
+        ...scoreSummary,
         docxBase64: filledBuffer.toString("base64"),
         filename: `${safeBusiness}_Home_Service_Revenue_Leak_Audit_Report.docx`,
         startHereBase64: startHereBuffer.toString("base64"),

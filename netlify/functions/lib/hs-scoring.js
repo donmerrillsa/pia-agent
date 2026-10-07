@@ -1,7 +1,12 @@
 // hs-scoring.js — Home Service Revenue Leak Audit scoring.
-// Same structure and rules as the fitness scoring.js (three areas, six 0–4
-// questions each, max 24 per area, lowest score = primary leak), with
-// home-service area names, answer ranges, metrics, actions, and estimates.
+// Three areas scored 0–4 per question:
+//   Attract & Convert  6 process questions + 3 missed-call questions = 36 max
+//   Deliver & Retain   6 questions = 24 max
+//   Expand Value       6 questions = 24 max
+// Areas are compared by PERCENTAGE (points ÷ that area's max), never raw points,
+// because the areas have different maximums. Submissions made before the
+// missed-call questions existed have no answers for them; Attract & Convert is
+// then scored on its original 6 questions (max 24), exactly as before.
 // The fitness files are untouched; nothing here is shared with them.
 
 const AC = "Attract & Convert New Customers";
@@ -54,10 +59,32 @@ const QUICK_START_ACTIONS = {
   ],
 };
 
-// Why the lowest-scoring area comes first, when the owner picked a different one.
-// How close (in points out of 24) the owner's own pick must be to the lowest
-// score for the owner's pick to lead the report. Adjust after real feedback.
-const OWNER_PICK_MARGIN = 3;
+// How close the owner's own pick must be to the lowest area for the owner's pick
+// to lead the report, as a share of each area's maximum. 3/24 = 12.5 percentage
+// points, the same as the original "within 3 points out of 24" rule.
+const OWNER_PICK_MARGIN_PCT = 3 / 24;
+
+// The three missed-call questions (Attract & Convert). Codes ac_mc1..3.
+const MISSED_CALL_CODES = ["ac_mc1", "ac_mc2", "ac_mc3"];
+const MISSED_CALL_MAX = 12;
+// Plain-language finding for each low answer (0, 1 or 2). 3 and 4 are not gaps.
+const MISSED_CALL_FINDINGS = {
+  ac_mc1: {
+    0: "Calls go to voicemail or go unanswered several times a day during business hours.",
+    1: "Calls go to voicemail or go unanswered most days during business hours.",
+    2: "Calls go to voicemail or go unanswered a few times a week during business hours.",
+  },
+  ac_mc2: {
+    0: "When a call is missed, often no one calls back.",
+    1: "Missed calls usually aren't returned until the next business day or later.",
+    2: "Missed calls are returned the same day, but it can take a few hours.",
+  },
+  ac_mc3: {
+    0: "After hours, callers reach voicemail and don't hear back until the next business day.",
+    1: "After hours, callers reach voicemail and hear back that evening at the earliest.",
+    2: "After hours, calls go to a personal cell phone, so whether they're answered depends on who is free.",
+  },
+};
 const CONTACT_PHONE = "(210) 846-6685";
 
 const START_HERE_REASON = {
@@ -133,22 +160,60 @@ function computeEcvOpportunityTypes(answers) {
   };
 }
 
+// Missed-call answers: all three present (new form), or all three blank
+// (submitted before the questions existed). Anything in between is an error,
+// so a half-answered set can never be scored silently.
+function missedCallAnswers(answers) {
+  const filled = MISSED_CALL_CODES.filter((c) => String(answers[c] || "").trim() !== "");
+  if (filled.length === 0) return null;
+  if (filled.length !== MISSED_CALL_CODES.length) {
+    const missing = MISSED_CALL_CODES.filter((c) => !filled.includes(c));
+    throw new Error(`Missed-call answers incomplete; missing: ${missing.join(", ")}`);
+  }
+  return Object.fromEntries(MISSED_CALL_CODES.map((c) => [c, leadingDigit(answers[c])]));
+}
+
+function computeMissedCalls(points) {
+  if (!points) return null;
+  const score = MISSED_CALL_CODES.reduce((s, c) => s + points[c], 0);
+  const findings = MISSED_CALL_CODES.filter((c) => points[c] <= 2).map((c) => MISSED_CALL_FINDINGS[c][points[c]]);
+  const gap = findings.length > 0;
+  const scoreLine = `Your three missed-call answers scored ${score} out of ${MISSED_CALL_MAX}. They are part of your Attract & Convert score above.`;
+  const note = gap
+    ? `${findings.join(" ")} Many callers who reach voicemail don't leave a message; they call the next company on the list, and the job is lost before anyone knows they called. The usual fix is simple: an automatic text to every missed call within a minute, then a person calls back within the hour. ${scoreLine}`
+    : `Your answers show calls are answered and returned quickly, including after hours. That's a strength; keep it in place as call volume grows. ${scoreLine}`;
+  const emailLine = gap
+    ? `One more thing from your answers: missed calls. ${findings[0]} Your report has a short section on it called "Missed calls."`
+    : "";
+  return { points, score, max: MISSED_CALL_MAX, gap, findings, note, emailLine };
+}
+
 function computeScores(answers) {
   const codes = (p) => [1, 2, 3, 4, 5, 6].map((n) => `${p}_q${n}`);
   const sumPoints = (cs) => cs.reduce((sum, c) => sum + leadingDigit(answers[c]), 0);
 
-  const scores = { [AC]: sumPoints(codes("ac")), [DR]: sumPoints(codes("dr")), [ECV]: sumPoints(codes("ecv")) };
-  const pcts = Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, v / 24]));
+  const mcPoints = missedCallAnswers(answers);
+  const missedCalls = computeMissedCalls(mcPoints);
+  const scores = {
+    [AC]: sumPoints(codes("ac")) + (missedCalls ? missedCalls.score : 0),
+    [DR]: sumPoints(codes("dr")),
+    [ECV]: sumPoints(codes("ecv")),
+  };
+  const maxes = { [AC]: missedCalls ? 36 : 24, [DR]: 24, [ECV]: 24 };
+  const pcts = Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, v / maxes[k]]));
+  const outOf = (b) => `${scores[b]}/${maxes[b]}`;
+  const pctText = (b) => `${Math.round(pcts[b] * 100)}%`;
   const unsure = (raw) => !String(raw || "").trim() || /not sure/i.test(String(raw));
   const areaOf = (raw) => BUCKET_NAMES.find((b) => String(raw || "").includes(b));
 
-  // Rule 1: lowest score wins, unless the owner's own "biggest financial
-  // difference" pick scored within OWNER_PICK_MARGIN points of it. Then the
-  // owner's pick leads, and the lowest-scoring area becomes their next priority.
-  const ranked = [...BUCKET_NAMES].sort((a, b) => scores[a] - scores[b]);
+  // Rule 1: lowest PERCENTAGE wins (ties keep the order AC, DR, ECV), unless the
+  // owner's own "biggest financial difference" pick is within
+  // OWNER_PICK_MARGIN_PCT of it. Then the owner's pick leads, and the
+  // lowest-scoring area becomes their next priority.
+  const ranked = [...BUCKET_NAMES].sort((a, b) => pcts[a] - pcts[b]);
   const lowest = ranked[0];
   const ownerPick = unsure(answers.self_impact) ? null : areaOf(answers.self_impact);
-  const ownerChose = !!ownerPick && ownerPick !== lowest && scores[ownerPick] - scores[lowest] <= OWNER_PICK_MARGIN;
+  const ownerChose = !!ownerPick && ownerPick !== lowest && pcts[ownerPick] - pcts[lowest] <= OWNER_PICK_MARGIN_PCT + 1e-9;
   const order = ownerChose ? [ownerPick, ...ranked.filter((b) => b !== ownerPick)] : ranked;
   const [primary, secondary, strongest] = order;
 
@@ -162,7 +227,7 @@ function computeScores(answers) {
   } else if (!unsure(answers.self_weakest)) {
     agreementText = weakestMatch
       ? "You also picked this as your weakest area, so your answers and your instincts agree."
-      : `You picked ${areaOf(answers.self_weakest) || answers.self_weakest} as your weakest area. Your answers point here instead, because this area scored lowest of the three (${scores[primary]}/24).`;
+      : `You picked ${areaOf(answers.self_weakest) || answers.self_weakest} as your weakest area. Your answers point here instead, because this area scored lowest of the three (${outOf(primary)}, ${pctText(primary)}).`;
   }
 
   const leads = lookup(LEADS_PER_MONTH, answers.leads_per_month);
@@ -209,7 +274,7 @@ function computeScores(answers) {
   const ESTIMATE = { [AC]: convEstimate, [DR]: retainEstimate, [ECV]: expandEstimate };
   let impactText = "";
   if (ownerChose) {
-    impactText = `You said this area would make the biggest financial difference, and your scores are close (${scores[primary]}/24 here, ${scores[lowest]}/24 for ${lowest}), so your plan starts where you see the most value. ${lowest} is your next priority.`;
+    impactText = `You said this area would make the biggest financial difference, and your scores are close (${pctText(primary)} here, ${pctText(lowest)} for ${lowest}), so your plan starts where you see the most value. ${lowest} is your next priority.`;
   } else if (!unsure(answers.self_impact)) {
     const other = areaOf(answers.self_impact);
     if (impactMatch) {
@@ -218,7 +283,7 @@ function computeScores(answers) {
       const est = ESTIMATE[other];
       impactText = `You said ${other} would make the biggest financial difference` +
         (est ? `, and your numbers suggest a real opportunity there (about ${money(est)})` : "") +
-        `. It scored ${scores[other]}/24, compared with ${scores[primary]}/24 here. We'd still start here: ${START_HERE_REASON[primary]}` +
+        `. It scored ${outOf(other)} (${pctText(other)}), compared with ${outOf(primary)} (${pctText(primary)}) here. We'd still start here: ${START_HERE_REASON[primary]}` +
         (BRIDGE[primary][other] ? ` ${BRIDGE[primary][other]}` : "") +
         ` If you'd still rather start with ${other}, call me at ${CONTACT_PHONE} or reply to my email, and I'll send you that plan too.`;
     } else {
@@ -242,7 +307,7 @@ function computeScores(answers) {
   }
 
   const result = {
-    scores, pcts, primary, secondary, strongest, weakestMatch, impactMatch, agreementText, impactText, softwareNote, ownerChose, lowest,
+    scores, maxes, pcts, missedCalls, primary, secondary, strongest, weakestMatch, impactMatch, agreementText, impactText, softwareNote, ownerChose, lowest,
     retainEstimate, expandEstimate, retainText, expandText, conversionText, problemText,
   };
   if (primary === ECV) result.ecvOpportunity = computeEcvOpportunityTypes(answers);
@@ -251,5 +316,6 @@ function computeScores(answers) {
 
 module.exports = {
   computeScores, interpret, DEFAULT_METRICS, QUICK_START_ACTIONS, leadingDigit,
+  MISSED_CALL_CODES, MISSED_CALL_MAX, OWNER_PICK_MARGIN_PCT,
   BUCKETS: { AC, DR, ECV }, BUCKET_NAMES,
 };

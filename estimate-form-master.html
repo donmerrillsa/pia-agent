@@ -618,6 +618,8 @@
     btn.disabled = true;
     btn.textContent = EDIT_ID ? 'Saving…' : 'Sending…';
 
+    defaultExpiresIfBlank();
+
     const payload = {
       business_id: BUSINESS_ID,
       customer_name: document.getElementById('customer_name').value,
@@ -726,11 +728,34 @@
     }
   }
 
+  // Default "Proposal Expires" to one month after the proposal date when left blank.
+  let expiresAutoFilled = false;
+  // Same day next month; clamps to month end (Jan 31 -> Feb 28/29).
+  function addOneMonthISO(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return new Date(Date.UTC(y, m, Math.min(d, lastDay))).toISOString().slice(0, 10);
+  }
+  function defaultExpiresIfBlank() {
+    const exp = document.getElementById('expires_date');
+    const pd = document.getElementById('proposal_date').value;
+    if (!exp.value && pd) {
+      exp.value = addOneMonthISO(pd);
+      expiresAutoFilled = true;
+    }
+  }
+  document.getElementById('expires_date').addEventListener('input', () => { expiresAutoFilled = false; });
+  document.getElementById('proposal_date').addEventListener('change', () => {
+    const pd = document.getElementById('proposal_date').value;
+    if (expiresAutoFilled && pd) document.getElementById('expires_date').value = addOneMonthISO(pd);
+  });
+
   // Default the date field to today, then load existing data if editing
   document.getElementById('proposal_date').valueAsDate = new Date();
   if (EDIT_ID) {
     loadForEdit();
   } else {
+    defaultExpiresIfBlank();
     offerDraftRestore();
   }
 </script>
